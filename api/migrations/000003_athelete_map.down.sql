@@ -1,0 +1,8 @@
+BEGIN;
+
+DROP TABLE
+  AthleteMap
+;
+DROP EXTENSION IF EXISTS "uuid-ossp";
+
+END;

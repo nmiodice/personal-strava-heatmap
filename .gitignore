@@ -1,0 +1,11 @@
+.envrc
+
+# terraform
+.terraform/
+terraform.tfstate*
+
+# python
+__pycache__/
+
+# IDE
+.vscode/

@@ -1,0 +1,11 @@
+{{template "top" .}}
+
+<h1>{{ .title }}</h1>
+
+
+<button id="login">Login to Strava</button>
+<input type="hidden" id="strava_client_id" name="strava_client_id" value="{{ .strava_client_id }}">
+
+<script src="/static/index.js"></script>
+
+{{template "bottom" .}}

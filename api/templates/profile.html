@@ -1,0 +1,15 @@
+{{template "top" .}}
+
+<h1>{{ .title }}</h1>
+
+
+<div>Profile</div>
+<div id="content">
+    <div id="message"></div>
+    <table id="summary" border=1></table>
+    <button id="syncbutton" disabled>Sync Activities</button>
+</div>
+
+<script src="/static/profile.js"></script>
+
+{{template "bottom" .}}
