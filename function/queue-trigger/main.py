@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 import numpy as np
 import PIL
 import psycopg2
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, ContentSettings
 from PIL import Image, ImageFilter
 from scipy.ndimage.filters import gaussian_filter
 
@@ -164,7 +164,7 @@ def get_activity_refs(athlete_id: int, config: DBConfig) -> List[ActivityRef]:
             'SELECT activity_data_ref FROM stravaactivity WHERE athlete_id = %s', (athlete_id,))
         row = cur.fetchone()
 
-        while row is not None:
+        while row is not None and len(row) and row[0] is not None:
             refs.append(ActivityRef(row[0]))
             row = cur.fetchone()
 
@@ -192,12 +192,16 @@ def download_activities(refs: List[ActivityRef], config: StorageConfig) -> List[
             def __dl_func(client):
                 js_string = client.download_blob().readall()
                 json_docs.append(json.loads(js_string))
-                logging.info(
-                    'downloaded {}/{} activities'.format(len(json_docs), len(refs)))
+                downloaded = len(json_docs)
+                if downloaded % 20 == 0:
+                    logging.info(
+                        'downloaded {}/{} activities'.format(len(json_docs), len(refs)))
 
             jobs.append(executor.submit(__dl_func, blob_client))
 
     concurrent.futures.as_completed(jobs)
+    logging.info(
+        'downloaded {}/{} activities'.format(len(json_docs), len(refs)))
     return json_docs
 
 
@@ -215,9 +219,12 @@ def upload_images(images: Dict[ProcessingParam, PIL.Image.Image], config: Storag
             def __upload_func(theParam):
                 blob_client = service_client.get_blob_client(
                     config.upload_container_name, theParam.filename_postfix)
+
                 byte_array = io.BytesIO()
                 images[theParam].save(byte_array, format='PNG')
+
                 blob_client.upload_blob(byte_array.getvalue(), overwrite=True)
+                blob_client.set_http_headers(ContentSettings(cache_control="max-age=60"))
 
             jobs.append(executor.submit(__upload_func, param))
 
@@ -355,7 +362,7 @@ def get_activities_as_numpy(args: Args) -> List[np.ndarray]:
 
             logging.info('begin::download_activities')
             activity_json_docs = download_activities(
-                activity_refs, args.storage_config)  # can be module level var
+                activity_refs, args.storage_config)
             logging.info('end::download_activities')
 
             logging.info('begin::activity_to_world_coordinates')
@@ -374,9 +381,7 @@ def get_activities_as_numpy(args: Args) -> List[np.ndarray]:
 
 
 def run(args: Args):
-    logging.basicConfig(level=logging.INFO)
-    logging.getLogger('azure.core').setLevel(logging.WARN)
-    logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
+    configure_logger()
 
     logging.info('begin::run')
     logging.info('\tprocessing_params: ' + str(len(args.processing_params)))
@@ -403,6 +408,12 @@ def run(args: Args):
 
     logging.info('end::run')
 
+def configure_logger():
+    logging.basicConfig(
+        level=logging.INFO,
+    )
+    logging.getLogger('azure.core').setLevel(logging.WARN)
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
 
 if __name__ == '__main__':
     run(get_args())
