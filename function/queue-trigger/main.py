@@ -224,7 +224,7 @@ def upload_images(images: Dict[ProcessingParam, PIL.Image.Image], config: Storag
                 images[theParam].save(byte_array, format='PNG')
 
                 blob_client.upload_blob(byte_array.getvalue(), overwrite=True)
-                blob_client.set_http_headers(ContentSettings(cache_control="max-age=60"))
+                blob_client.set_http_headers(ContentSettings(cache_control="max-age=120"))
 
             jobs.append(executor.submit(__upload_func, param))
 
