@@ -79,7 +79,7 @@ class ActivityRef:
 JsonDict = Dict[str, Any]
 
 ACTIVITIES_DOWNLOAD_LOCK: threading.Lock = threading.Lock()
-ACTIVITIES_AS_NUMPY_WORLD_COORDS: Optional[List[np.ndarray]] = None
+ACTIVITIES_AS_NUMPY_WORLD_COORDS: Dict[int, List[np.ndarray]] = dict()
 
 
 def get_processing_params() -> List[ProcessingParam]:
@@ -355,7 +355,7 @@ def get_activities_as_numpy(args: Args) -> List[np.ndarray]:
     global ACTIVITIES_AS_NUMPY_WORLD_COORDS
 
     with ACTIVITIES_DOWNLOAD_LOCK:
-        if ACTIVITIES_AS_NUMPY_WORLD_COORDS is None:
+        if args.athlete_id not in ACTIVITIES_AS_NUMPY_WORLD_COORDS:
             logging.info('begin::get_activity_refs')
             activity_refs = get_activity_refs(args.athlete_id, args.db_config)
             logging.info('end::get_activity_refs')
@@ -368,7 +368,7 @@ def get_activities_as_numpy(args: Args) -> List[np.ndarray]:
             logging.info('begin::activity_to_world_coordinates')
             coordinates = parse_activity_coordinates(activity_json_docs)
 
-            ACTIVITIES_AS_NUMPY_WORLD_COORDS = [
+            ACTIVITIES_AS_NUMPY_WORLD_COORDS[args.athlete_id] = [
                 project_to_world_coordinates(
                     args.tile_size_px, np.array(coords))
                 for coords in coordinates
@@ -377,7 +377,7 @@ def get_activities_as_numpy(args: Args) -> List[np.ndarray]:
         else:
             logging.info('using cached ride data')
 
-        return ACTIVITIES_AS_NUMPY_WORLD_COORDS
+        return ACTIVITIES_AS_NUMPY_WORLD_COORDS[args.athlete_id]
 
 
 def run(args: Args):
