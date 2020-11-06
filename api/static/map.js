@@ -20,6 +20,7 @@ class CoordMapType {
       const tile_name = '-' + coord.x + '-' + coord.y + '-' + zoom + '.png'
 
       img.onerror="this.style.display='none';"
+      img.alt = ""
       img.src = endpoint + map_id + tile_name
       return img
     }
