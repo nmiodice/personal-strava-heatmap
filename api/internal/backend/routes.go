@@ -166,7 +166,7 @@ var getSyncActivitiesRoute = func(stravaSvc *strava.StravaService) gin.HandlerFu
 }
 
 var getBuildMapRoute = func(
-	concurrencyLimit int,
+	storageConcurrencyLimit int,
 	mapConfig MapConfig,
 	stravaSvc *strava.StravaService,
 	storageSvc *storage.AzureBlobstore,
@@ -213,7 +213,7 @@ var getBuildMapRoute = func(
 			})
 		}
 
-		if err = concurrency.NewSemaphore(concurrencyLimit).WithRateLimit(concurrencyLimit, funcs); err != nil {
+		if err = concurrency.NewSemaphore(storageConcurrencyLimit).WithRateLimit(funcs); err != nil {
 			c.JSON(500, gin.H{
 				ResponseError:  err.Error(),
 				ResponseStatus: "failed",

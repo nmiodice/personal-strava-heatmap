@@ -39,6 +39,10 @@ func (ts TileSet) Add(x, y, z int) {
 	ts.tiles.Add(Tile{x, y, z})
 }
 
+func (ts TileSet) Size() int {
+	return ts.tiles.Size()
+}
+
 func NewMapService() *MapService {
 	return &MapService{}
 }
@@ -46,7 +50,6 @@ func NewMapService() *MapService {
 func (ms MapService) AddToTileSet(data []byte, minZoom, maxZoom int, tiles *TileSet) {
 	coords := parseLatLonList(data)
 	addTiles(coords, minZoom, maxZoom, tiles)
-	fmt.Println("done", tiles.tiles.Size())
 }
 
 func addTiles(coords [][]float64, minZoom, maxZoom int, tiles *TileSet) {

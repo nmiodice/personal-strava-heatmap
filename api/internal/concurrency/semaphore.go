@@ -6,12 +6,13 @@ var emptySingleton = empty{}
 
 // Semaphore Enables semaphore operations
 type Semaphore struct {
-	ch chan empty
+	resources int
+	ch        chan empty
 }
 
 // NewSemaphore creates a new semaphore with a specific resource count
 func NewSemaphore(resources int) Semaphore {
-	return Semaphore{make(chan empty, resources)}
+	return Semaphore{resources, make(chan empty, resources)}
 }
 
 // Acquire acquire n resources
@@ -28,7 +29,7 @@ func (s Semaphore) Release(n int) {
 	}
 }
 
-func (s Semaphore) WithRateLimit(concurrencyLimit int, funcs []func() error) error {
+func (s Semaphore) WithRateLimit(funcs []func() error) error {
 	errChan := make(chan error)
 	doneChan := make(chan empty)
 

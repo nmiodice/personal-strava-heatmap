@@ -35,7 +35,7 @@ type StorageConfig struct {
 	ContainerName       string `env:"STORAGE_CONTAINER_NAME,required"`
 	AccountName         string `env:"STORAGE_ACCOUNT_NAME,required"`
 	AccountKey          string `env:"STORAGE_ACCOUNT_KEY,required"`
-	ConcurrencyLimit    int    `env:"STORAGE_CONCURRENCY_LIMIT,default=32"`
+	ConcurrencyLimit    int    `env:"STORAGE_MAX_WORKERS,default=16"`
 	UploadContainerName string `env:"UPLOAD_STORAGE_CONTAINER_NAME,required"`
 }
 
