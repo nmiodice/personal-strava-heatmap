@@ -84,46 +84,47 @@ ACTIVITIES_AS_NUMPY_WORLD_COORDS: Dict[int, List[np.ndarray]] = dict()
 
 def get_processing_params() -> List[ProcessingParam]:
     return [
-        ProcessingParam('foo-1.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-2.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-3.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-4.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-5.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-6.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-7.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-8.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-9.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('foo-10.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                  bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-1.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-2.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-3.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-4.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-5.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-6.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-7.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-8.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-9.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                 bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
-        ProcessingParam('bar-10.png', BoundingBox(top_left=(42.47918714391391, -71.41422271728516),
-                                                  bottom_right=(42.478933935077755, -71.41387939453125)), Tile(316279, 387364, 20)),
+
+        ProcessingParam('foo-1.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-2.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-3.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-4.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-5.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-6.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-7.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-8.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-9.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('foo-10.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                  bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-1.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-2.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-3.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-4.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-5.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-6.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-7.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-8.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-9.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                 bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
+        ProcessingParam('bar-10.png', BoundingBox(top_left=(30.363396239603716, -97.811279296875),
+                                                  bottom_right=(30.353916372297043, -97.80029296875)), Tile(7481, 13481, 15)),
     ]
 
 
@@ -176,7 +177,8 @@ def get_activity_refs(athlete_id: int, config: DBConfig) -> List[ActivityRef]:
     return refs
 
 
-def download_activities(refs: List[ActivityRef], config: StorageConfig) -> List[JsonDict]:
+def download_activities(refs: List[ActivityRef],
+                        config: StorageConfig) -> List[JsonDict]:
     json_docs = []
     service_client = BlobServiceClient(
         account_url="https://{0}.blob.core.windows.net".format(
@@ -205,7 +207,8 @@ def download_activities(refs: List[ActivityRef], config: StorageConfig) -> List[
     return json_docs
 
 
-def upload_images(images: Dict[ProcessingParam, PIL.Image.Image], config: StorageConfig) -> None:
+def upload_images(images: Dict[ProcessingParam,
+                               PIL.Image.Image], config: StorageConfig) -> None:
 
     service_client = BlobServiceClient(
         account_url="https://{0}.blob.core.windows.net".format(
@@ -224,7 +227,8 @@ def upload_images(images: Dict[ProcessingParam, PIL.Image.Image], config: Storag
                 images[theParam].save(byte_array, format='PNG')
 
                 blob_client.upload_blob(byte_array.getvalue(), overwrite=True)
-                blob_client.set_http_headers(ContentSettings(cache_control="max-age=120"))
+                blob_client.set_http_headers(
+                    ContentSettings(cache_control="max-age=120"))
 
             jobs.append(executor.submit(__upload_func, param))
 
@@ -232,10 +236,11 @@ def upload_images(images: Dict[ProcessingParam, PIL.Image.Image], config: Storag
 
 
 def measurement_to_percent(measurement, min_val, max_val):
-    return float(measurement - min_val)/float(max_val-min_val)
+    return float(measurement - min_val) / float(max_val - min_val)
 
 
-def project_to_world_coordinates(tile_size_px: int, coords: np.ndarray) -> np.ndarray:
+def project_to_world_coordinates(
+        tile_size_px: int, coords: np.ndarray) -> np.ndarray:
     xs = tile_size_px * (0.5 + coords[:, 1] / 360)
     siny = np.clip(
         np.sin(coords[:, 0] * math.pi / 180.0), a_min=-0.9999, a_max=0.9999)
@@ -248,14 +253,16 @@ def world_coord_to_pxs(coords: np.ndarray, scale: int) -> np.ndarray:
     return (coords * scale).astype(int)
 
 
-def lat_lon_to_pxs(tile_size_px: int, coords: np.ndarray, scale: int) -> np.ndarray:
+def lat_lon_to_pxs(tile_size_px: int, coords: np.ndarray,
+                   scale: int) -> np.ndarray:
     return world_coord_to_pxs(
         project_to_world_coordinates(tile_size_px, coords),
         scale
     )
 
 
-def add_to_coordinate_summary(coords: np.ndarray, tile_size_px: int, param: ProcessingParam, summary: CoordinateSummary):
+def add_to_coordinate_summary(coords: np.ndarray, tile_size_px: int,
+                              param: ProcessingParam, summary: CoordinateSummary):
 
     bounds = param.bounds
     scale = 1 << param.tile.z
@@ -263,8 +270,7 @@ def add_to_coordinate_summary(coords: np.ndarray, tile_size_px: int, param: Proc
     bounds_px = lat_lon_to_pxs(
         tile_size_px,
         np.array([bounds.top_left, bounds.bottom_right]),
-        scale
-    )
+        scale)
     top_left_px = bounds_px[0]
     bottom_right_px = bounds_px[1]
 
@@ -276,22 +282,30 @@ def add_to_coordinate_summary(coords: np.ndarray, tile_size_px: int, param: Proc
     if filter_in_bounds(coords_as_px, top_left_px, bottom_right_px).size == 0:
         return
 
-    coordTimestamps = range(len(coords_as_px))
-    coordFineGrainedTimestamps = np.arange(0, len(coords_as_px), .1)
-
-    interpLats = np.interp(coordFineGrainedTimestamps,
-                           coordTimestamps, coords_as_px[:, 0])
-    interpLons = np.interp(coordFineGrainedTimestamps,
-                           coordTimestamps, coords_as_px[:, 1])
-    interpCoords = np.vstack([interpLats, interpLons]).T
-
+    interpCoords = interpolate_2d(coords_as_px, .01)
     filteredInterpCoordPx = filter_in_bounds(
         interpCoords, top_left_px, bottom_right_px)
-    for px in filteredInterpCoordPx:
-        summary.points.add(adjust_pixel_for_tile(px, top_left_px, tile_size_px))
+
+    # interpolate once more to get a nice smooth line of pixels
+    adjustedPixels = adjust_pixel_for_tile(
+        filteredInterpCoordPx, top_left_px, tile_size_px)
+    for px in adjustedPixels:
+        summary.points.add(tuple(px.tolist()))  # type: ignore
 
 
-def filter_in_bounds(coords: np.ndarray, top_left_px: Tuple[int, int], bottom_right_px: Tuple[int, int]) -> np.ndarray:
+def interpolate_2d(data, step):
+    timestamps = range(data.shape[0])
+    fineGrainedTimestamps = np.arange(0, len(data), step)
+
+    interpLats = np.interp(fineGrainedTimestamps,
+                           timestamps, data[:, 0])
+    interpLons = np.interp(fineGrainedTimestamps,
+                           timestamps, data[:, 1])
+    return np.vstack([interpLats, interpLons]).T
+
+
+def filter_in_bounds(
+        coords: np.ndarray, top_left_px: Tuple[int, int], bottom_right_px: Tuple[int, int]) -> np.ndarray:
     return coords[(
         (coords[:, 0] > top_left_px[0]) &
         (coords[:, 0] < bottom_right_px[0]) &
@@ -300,14 +314,16 @@ def filter_in_bounds(coords: np.ndarray, top_left_px: Tuple[int, int], bottom_ri
     )]
 
 
-def adjust_pixel_for_tile(px: Tuple[float, float], top_left_px: Tuple[int, int], tile_size_px: int) -> Tuple[int, int]:
-    return (
-        min(tile_size_px - 1, int(px[0] - top_left_px[0])),
-        min(tile_size_px - 1, int(px[1] - top_left_px[1])),
-    )
+def adjust_pixel_for_tile(
+        pxs: np.ndarray, top_left_px: np.ndarray, tile_size_px: int) -> np.ndarray:
+    xs = np.minimum(pxs[:, 0] - top_left_px[0], tile_size_px - 1)
+    ys = np.minimum(pxs[:, 1] - top_left_px[1], tile_size_px - 1)
+
+    return np.vstack([xs, ys]).T.astype(int)
 
 
-def compute_coordinates_summaries(np_world_coords: List[np.ndarray], tile_size_px: int, params: List[ProcessingParam]):
+def compute_coordinates_summaries(
+        np_world_coords: List[np.ndarray], tile_size_px: int, params: List[ProcessingParam]):
     summaries = {
         param: CoordinateSummary(set())
         for param in params
@@ -320,12 +336,19 @@ def compute_coordinates_summaries(np_world_coords: List[np.ndarray], tile_size_p
     return summaries
 
 
-def process_coordinate_summary(tile_size_px: int, coord_summary: CoordinateSummary) -> PIL.Image.Image:
+def process_coordinate_summary(
+        tile_size_px: int, coord_summary: CoordinateSummary) -> PIL.Image.Image:
     imageMap = np.zeros((tile_size_px, tile_size_px, 4), dtype=np.uint8)
 
     # axis 0 is Y, axis 1 is X
     for point in coord_summary.points:
-        imageMap[point[1], point[0]] = [255, 0, 0, 255]
+        y_min = max(point[1] - 1, 0)
+        y_max = min(point[1] + 1, tile_size_px)
+
+        x_min = max(point[0] - 1, 0)
+        x_max = min(point[0] + 1, tile_size_px)
+
+        imageMap[y_min:y_max, x_min:x_max] = [255, 0, 0, 255]
 
     blurredImageMap = gaussian_filter(imageMap, sigma=(.8, .8, .8))
     maxPxVal = np.max(blurredImageMap)
@@ -408,12 +431,14 @@ def run(args: Args):
 
     logging.info('end::run')
 
+
 def configure_logger():
     logging.basicConfig(
         level=logging.INFO,
     )
     logging.getLogger('azure.core').setLevel(logging.WARN)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
+
 
 if __name__ == '__main__':
     run(get_args())

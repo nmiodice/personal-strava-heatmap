@@ -7,6 +7,7 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
 WORKDIR /home/site/wwwroot
 
 RUN apt install -y libpq-dev python3-dev
+RUN python -m pip install --upgrade pip
 
 
 # Install dev dependencies
@@ -22,3 +23,4 @@ COPY . /home/site/wwwroot
 
 RUN (cd queue-trigger && mypy --ignore-missing-imports *.py)
 RUN (cd queue-trigger && isort --check-only *.py)
+RUN (cd queue-trigger && autopep8 --aggressive --exit-code --in-place *.py)
