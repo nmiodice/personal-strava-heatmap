@@ -9,3 +9,6 @@ __pycache__/
 
 # IDE
 .vscode/
+
+# Azure Function
+local.settings.json
