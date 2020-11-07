@@ -46,7 +46,7 @@ resource "azurerm_function_app" "func" {
   version                    = "~3"
 
   site_config {
-    linux_fx_version = "Python|3.8"
+    linux_fx_version = "PYTHON|3.8"
   }
 
   app_settings = {
