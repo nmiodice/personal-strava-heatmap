@@ -42,6 +42,7 @@ function configureButtomListener() {
       navigator.geolocation.getCurrentPosition(function ({ coords: { latitude: lat, longitude: lng } }) {
         map.setCenter({ lat, lng })
         map.panTo({ lat, lng })
+        map.setZoom(13)
       }, function () {
         alert('You must grant access to your location in order to use this feature.')
       });
