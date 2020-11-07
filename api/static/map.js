@@ -147,14 +147,6 @@ function getMapStyle() {
       ]
     },
     {
-      "elementType": "labels",
-      "stylers": [
-        {
-          "visibility": "off"
-        }
-      ]
-    },
-    {
       "elementType": "labels.icon",
       "stylers": [
         {
@@ -184,9 +176,6 @@ function getMapStyle() {
       "stylers": [
         {
           "color": "#757575"
-        },
-        {
-          "visibility": "off"
         }
       ]
     },
@@ -208,24 +197,8 @@ function getMapStyle() {
       ]
     },
     {
-      "featureType": "administrative.locality",
-      "elementType": "labels.text.fill",
-      "stylers": [
-        {
-          "color": "#bdbdbd"
-        }
-      ]
-    },
-    {
-      "featureType": "administrative.neighborhood",
-      "stylers": [
-        {
-          "visibility": "off"
-        }
-      ]
-    },
-    {
       "featureType": "poi",
+      "elementType": "labels.text",
       "stylers": [
         {
           "visibility": "off"
@@ -238,6 +211,38 @@ function getMapStyle() {
       "stylers": [
         {
           "color": "#757575"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.attraction",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.business",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.government",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.medical",
+      "stylers": [
+        {
+          "visibility": "off"
         }
       ]
     },
@@ -269,11 +274,44 @@ function getMapStyle() {
       ]
     },
     {
+      "featureType": "poi.place_of_worship",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.school",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
+      "featureType": "poi.sports_complex",
+      "stylers": [
+        {
+          "visibility": "off"
+        }
+      ]
+    },
+    {
       "featureType": "road",
       "elementType": "geometry.fill",
       "stylers": [
         {
           "color": "#2c2c2c"
+        }
+      ]
+    },
+    {
+      "featureType": "road",
+      "elementType": "labels",
+      "stylers": [
+        {
+          "visibility": "off"
         }
       ]
     },
@@ -354,6 +392,15 @@ function getMapStyle() {
       "stylers": [
         {
           "color": "#000000"
+        }
+      ]
+    },
+    {
+      "featureType": "water",
+      "elementType": "labels.text",
+      "stylers": [
+        {
+          "visibility": "off"
         }
       ]
     },
