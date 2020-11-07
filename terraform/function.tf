@@ -26,7 +26,7 @@ resource "azurerm_app_service_plan" "function-asp" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "FunctionApp"
-  reserved = true
+  reserved            = true
 
   sku {
     tier = "Dynamic"
