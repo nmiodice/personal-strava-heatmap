@@ -59,8 +59,9 @@ func (dbc DatabaseConfig) ConnectionString() string {
 }
 
 type MapConfig struct {
-	MinTileZoom int `env:"MIN_TILE_ZOOM,default=2"`
-	MaxTileZoom int `env:"MAX_TILE_ZOOM,default=20"`
+	MinTileZoom int    `env:"MIN_TILE_ZOOM,default=2"`
+	MaxTileZoom int    `env:"MAX_TILE_ZOOM,default=20"`
+	MapsAPIKey  string `env:"GOOGLE_MAPS_API_KEY,required"`
 }
 
 type Config struct {

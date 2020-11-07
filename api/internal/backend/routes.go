@@ -59,7 +59,8 @@ func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
 		MapRoute: getMapRoute(
 			"map.html",
 			deps.Strava,
-			config.Storage),
+			config.Storage,
+			config.Map),
 		StaticFileServer: func(urlPrefix string) gin.HandlerFunc {
 			return static.Serve(urlPrefix, static.LocalFile(config.StaticFileRoot, false))
 		},
@@ -72,7 +73,7 @@ func templateFileRoute(templateFileName string, params gin.H) gin.HandlerFunc {
 	}
 }
 
-var getMapRoute = func(templateFileName string, stravaSvc *strava.StravaService, storageConfig StorageConfig) gin.HandlerFunc {
+var getMapRoute = func(templateFileName string, stravaSvc *strava.StravaService, storageConfig StorageConfig, mapConfig MapConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Query(QueryParamToken)
 		if token == "" {
@@ -92,6 +93,7 @@ var getMapRoute = func(templateFileName string, stravaSvc *strava.StravaService,
 
 		c.HTML(http.StatusOK, templateFileName, gin.H{
 			"map_id":        mapID,
+			"map_api_key":   mapConfig.MapsAPIKey,
 			"tile_endpoint": fmt.Sprintf("https://%s.blob.core.windows.net/%s/", storageConfig.AccountName, storageConfig.UploadContainerName),
 		})
 	}
