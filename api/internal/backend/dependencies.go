@@ -2,7 +2,13 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
+	"time"
+
+	resty "github.com/go-resty/resty/v2"
 
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
 	"github.com/nmiodice/personal-strava-heatmap/internal/maps"
@@ -12,7 +18,7 @@ import (
 )
 
 type Dependencies struct {
-	HttpClient *http.Client
+	HttpClient *resty.Client
 	DB         *database.DB
 	Strava     *strava.StravaService
 	Map        *maps.MapService
@@ -35,15 +41,39 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		return nil, err
 	}
 
-	http := &http.Client{
-		Timeout: config.HttpClient.Timeout,
-	}
+	http := &http.Client{Timeout: config.HttpClient.Timeout}
+	restyClient := resty.
+		NewWithClient(http).
+		SetRetryCount(5).
+		SetRetryWaitTime(500 * time.Millisecond).
+		AddRetryCondition(func(r *resty.Response, e error) bool {
+			if e != nil {
+				return true
+			}
 
-	athleteSvc := strava.NewAthleteService(http, db, storageClient)
+			response := map[string]interface{}{}
+			json.Unmarshal(r.Body(), &response)
+			for _, key := range []string{"error", "Error", "errors", "Errors"} {
+				if val, ok := response[key]; ok {
+					log.Printf("Detected error in API response. Will retry: %+v", val)
+					return true
+				}
+			}
+			return false
+		}).
+		OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
+			if r.StatusCode() >= 300 {
+				log.Printf("Converting HTTP %d to error response", r.StatusCode())
+				return fmt.Errorf("HTTP %s", r.Status())
+			}
+			return nil
+		})
+
+	athleteSvc := strava.NewAthleteService(restyClient, db, config.Strava.ConcurrencyLimit, storageClient)
 
 	stravaService := &strava.StravaService{
 		Auth: strava.NewOAuthService(
-			http,
+			restyClient,
 			db,
 			config.Strava.ClientID,
 			config.Strava.ClientSecret,
@@ -63,7 +93,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 
 	deps := &Dependencies{
 		DB:         db,
-		HttpClient: http,
+		HttpClient: restyClient,
 		Strava:     stravaService,
 		Map:        maps.NewMapService(),
 		Storage:    storageClient,

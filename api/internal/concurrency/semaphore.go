@@ -1,5 +1,9 @@
 package concurrency
 
+import (
+	"github.com/hashicorp/go-multierror"
+)
+
 type empty struct{}
 
 var emptySingleton = empty{}
@@ -29,7 +33,7 @@ func (s Semaphore) Release(n int) {
 	}
 }
 
-func (s Semaphore) WithRateLimit(funcs []func() error) error {
+func (s Semaphore) WithRateLimit(funcs []func() error, stopOnError bool) error {
 	errChan := make(chan error)
 	doneChan := make(chan empty)
 
@@ -49,14 +53,23 @@ func (s Semaphore) WithRateLimit(funcs []func() error) error {
 	}
 
 	totalDone := 0
+	var result *multierror.Error
 	for {
 		select {
 		case err := <-errChan:
-			return err
+			if stopOnError {
+				return err
+			}
+
+			result = multierror.Append(result, err)
+			totalDone++
+			if totalDone == len(funcs) {
+				return result.ErrorOrNil()
+			}
 		case <-doneChan:
 			totalDone++
 			if totalDone == len(funcs) {
-				return nil
+				return result.ErrorOrNil()
 			}
 		}
 	}

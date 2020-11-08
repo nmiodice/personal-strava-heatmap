@@ -4,17 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"time"
 
+	resty "github.com/go-resty/resty/v2"
 	"github.com/jackc/pgx/v4"
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
 )
 
 type oauthClient struct {
-	httpClient         *http.Client
+	httpClient         *resty.Client
 	stravaClientID     string
 	stravaClientSecret string
 }
@@ -28,7 +26,7 @@ type OAuthService struct {
 	db     oauthDB
 }
 
-func NewOAuthService(httpClient *http.Client, db *database.DB, stravaClientID, stravaClientSecret string) *OAuthService {
+func NewOAuthService(httpClient *resty.Client, db *database.DB, stravaClientID, stravaClientSecret string) *OAuthService {
 	return &OAuthService{
 		client: oauthClient{
 			httpClient:         httpClient,
@@ -86,52 +84,40 @@ func (o OAuthService) RefreshAuthToken(ctx context.Context, athleteID int) (*Ath
 }
 
 func (c oauthClient) doRefreshAuthToken(refreshToken string) (*stravaTokens, error) {
-	res, err := c.httpClient.PostForm(
-		"https://www.strava.com/api/v3/oauth/token",
-		url.Values{
-			"client_id":     {c.stravaClientID},
-			"client_secret": {c.stravaClientSecret},
-			"grant_type":    {"refresh_token"},
-			"refresh_token": {refreshToken},
-		},
-	)
+	res, err := c.httpClient.R().
+		SetFormData(map[string]string{
+			"client_id":     c.stravaClientID,
+			"client_secret": c.stravaClientSecret,
+			"grant_type":    "refresh_token",
+			"refresh_token": refreshToken,
+		}).
+		Post("https://www.strava.com/api/v3/oauth/token")
 
-	if err != nil {
-		return nil, err
-	}
-
-	resBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	tokens := &stravaTokens{}
-	err = json.Unmarshal(resBytes, tokens)
+	err = json.Unmarshal(res.Body(), tokens)
 	return tokens, err
 }
 
 func (c oauthClient) doExchangeAuthToken(request *TokenExchangeCode) (*authorizationCodeResponse, error) {
-	res, err := c.httpClient.PostForm(
-		"https://www.strava.com/api/v3/oauth/token",
-		url.Values{
-			"client_id":     {c.stravaClientID},
-			"client_secret": {c.stravaClientSecret},
-			"grant_type":    {"authorization_code"},
-			"code":          {request.Code},
-		},
-	)
+	res, err := c.httpClient.R().
+		SetFormData(map[string]string{
+			"client_id":     c.stravaClientID,
+			"client_secret": c.stravaClientSecret,
+			"grant_type":    "authorization_code",
+			"code":          request.Code,
+		}).
+		Post("https://www.strava.com/api/v3/oauth/token")
 
-	if err != nil {
-		return nil, err
-	}
-
-	resBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	authCodeResponse := &authorizationCodeResponse{}
-	err = json.Unmarshal(resBytes, authCodeResponse)
+	err = json.Unmarshal(res.Body(), authCodeResponse)
 	return authCodeResponse, err
 }
 

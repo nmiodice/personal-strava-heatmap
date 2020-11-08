@@ -215,7 +215,7 @@ var getBuildMapRoute = func(
 			})
 		}
 
-		if err = concurrency.NewSemaphore(storageConcurrencyLimit).WithRateLimit(funcs); err != nil {
+		if err = concurrency.NewSemaphore(storageConcurrencyLimit).WithRateLimit(funcs, true); err != nil {
 			c.JSON(500, gin.H{
 				ResponseError:  err.Error(),
 				ResponseStatus: "failed",

@@ -4,18 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strconv"
+	"time"
+
+	resty "github.com/go-resty/resty/v2"
 
 	"github.com/jackc/pgx/v4"
+	"github.com/nmiodice/personal-strava-heatmap/internal/concurrency"
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
 )
 
 type athleteClient struct {
-	httpClient *http.Client
+	httpClient *resty.Client
 }
 
 type athleteDB struct {
@@ -23,14 +25,16 @@ type athleteDB struct {
 }
 
 type AthleteService struct {
-	client        athleteClient
-	db            athleteDB
-	oauthDB       oauthDB
-	storageClient *storage.AzureBlobstore
+	concurrencyLimit int
+	client           athleteClient
+	db               athleteDB
+	oauthDB          oauthDB
+	storageClient    *storage.AzureBlobstore
 }
 
-func NewAthleteService(httpClient *http.Client, db *database.DB, storageClient *storage.AzureBlobstore) *AthleteService {
+func NewAthleteService(httpClient *resty.Client, db *database.DB, concurrencyLimit int, storageClient *storage.AzureBlobstore) *AthleteService {
 	return &AthleteService{
+		concurrencyLimit: concurrencyLimit,
 		client: athleteClient{
 			httpClient: httpClient,
 		},
@@ -96,15 +100,27 @@ func (as AthleteService) SyncActivities(ctx context.Context, token string) (int,
 	}
 
 	count := 0
-	for _, activityID := range unsyncedActivities {
-		err = as.syncSingleActivity(ctx, token, athleteID, activityID)
-		if err != nil {
-			return count, err
+	countSem := concurrency.NewSemaphore(1)
+	funcs := make([](func() error), len(unsyncedActivities))
+	for i, activityID := range unsyncedActivities {
+		theActivity := activityID
+		funcs[i] = func() error {
+			err := as.syncSingleActivity(ctx, token, athleteID, theActivity)
+			if err != nil {
+				return err
+			}
+
+			time.Sleep(1 * time.Second) // agressive rate limit on Strava API...
+			countSem.Acquire(1)
+			defer countSem.Release(1)
+			count++
+			log.Printf("Downloaded %d of %d activities", count, len(unsyncedActivities))
+			return nil
 		}
-		count++
 	}
 
-	return count, nil
+	err = concurrency.NewSemaphore(as.concurrencyLimit).WithRateLimit(funcs, false)
+	return count, err
 }
 
 func (as AthleteService) syncSingleActivity(ctx context.Context, token string, athleteID int, activityID int64) error {
@@ -156,20 +172,20 @@ func (ac athleteClient) ListAllActivities(ctx context.Context, token string) ([]
 
 func (ac athleteClient) getActivityIDsFromPage(ctx context.Context, token string, page int) ([]Activity, error) {
 	activities := []Activity{}
-	url := "https://www.strava.com/api/v3/activities?per_page=100&page=" + strconv.Itoa(page)
 
-	log.Println("HTTP GET: " + url)
-	req, err := http.NewRequest("GET", url, nil)
+	res, err := ac.httpClient.R().
+		SetHeader("Authorization", "Bearer "+token).
+		SetQueryParams(map[string]string{
+			"page":     strconv.Itoa(page),
+			"per_page": "100",
+		}).
+		Get("https://www.strava.com/api/v3/activities")
+
 	if err != nil {
 		return activities, err
 	}
-	req.Header.Add("Authorization", "Bearer "+token)
-	resp, err := ac.httpClient.Do(req)
-	if err != nil {
-		return activities, err
-	}
 
-	err = json.NewDecoder(resp.Body).Decode(&activities)
+	err = json.Unmarshal(res.Body(), &activities)
 	if err != nil {
 		return nil, err
 	}
@@ -177,24 +193,15 @@ func (ac athleteClient) getActivityIDsFromPage(ctx context.Context, token string
 }
 
 func (ac athleteClient) GetActivity(ctx context.Context, token string, activityID int64) ([]byte, error) {
-	url := "https://www.strava.com/api/v3/activities/" + strconv.FormatInt(activityID, 10) + "/streams?keys=latlng"
+	url := fmt.Sprintf("https://www.strava.com/api/v3/activities/%d/streams?keys=latlng", activityID)
+	res, err := ac.httpClient.R().
+		SetHeader("Authorization", "Bearer "+token).
+		Get(url)
 
-	log.Println("HTTP GET: " + url)
-	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("Authorization", "Bearer "+token)
-	resp, err := ac.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return bodyBytes, nil
+	return res.Body(), nil
 }
 
 func (ad athleteDB) InsertActivities(ctx context.Context, activities []Activity) ([]int64, error) {
@@ -262,7 +269,8 @@ func (ad athleteDB) UnsyncedActivities(ctx context.Context, athleteID int) ([]in
 }
 
 func (ad athleteDB) UpdateActivityWithDataRef(ctx context.Context, athleteID int, activityID int64, dataRef string) error {
-	return ad.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
+	log.Printf("%d | %d", athleteID, activityID)
+	return ad.db.InTx(ctx, pgx.RepeatableRead, func(tx pgx.Tx) error {
 		row := tx.QueryRow(ctx, updateActivityWithDataRefSQL, athleteID, activityID, dataRef)
 		var updatedActivityID int64
 		if err := row.Scan(&updatedActivityID); err != nil {

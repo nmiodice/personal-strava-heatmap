@@ -18,8 +18,9 @@ type HttpClientConfig struct {
 }
 
 type StravaAppConfig struct {
-	ClientID     string `env:"STRAVA_CLIENT_ID,required"`
-	ClientSecret string `env:"STRAVA_CLIENT_SECRET,required"`
+	ClientID         string `env:"STRAVA_CLIENT_ID,required"`
+	ClientSecret     string `env:"STRAVA_CLIENT_SECRET,required"`
+	ConcurrencyLimit int    `env:"STRAVA_MAX_DOWNLOAD_WORKERS,default=1"`
 }
 
 type DatabaseConfig struct {
