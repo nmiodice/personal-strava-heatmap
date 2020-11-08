@@ -6,20 +6,6 @@ resource "azurerm_application_insights" "ai" {
   application_type    = "other"
 }
 
-# # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan
-# resource "azurerm_app_service_plan" "function-asp" {
-#   name                = format("%s-asp", local.prefix)
-#   location            = azurerm_resource_group.rg.location
-#   resource_group_name = azurerm_resource_group.rg.name
-#   kind                = "linux"
-#   reserved = true
-
-#   sku {
-#     tier = "PremiumV3"
-#     size = "P1v3"
-#   }
-# }
-
 # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan
 resource "azurerm_app_service_plan" "function-asp" {
   name                = format("%s-asp", local.prefix)
