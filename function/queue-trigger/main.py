@@ -162,10 +162,10 @@ def get_activity_refs(athlete_id: int, config: DBConfig) -> List[ActivityRef]:
 
         cur = conn.cursor()
         cur.execute(
-            'SELECT activity_data_ref FROM stravaactivity WHERE athlete_id = %s', (athlete_id,))
+            'SELECT activity_data_ref FROM stravaactivity WHERE athlete_id = %s AND activity_data_ref IS NOT NULL', (athlete_id,))
         row = cur.fetchone()
 
-        while row is not None and len(row) and row[0] is not None:
+        while row is not None and len(row) == 1:
             refs.append(ActivityRef(row[0]))
             row = cur.fetchone()
 
@@ -393,7 +393,7 @@ def get_activities_as_numpy(args: Args) -> List[np.ndarray]:
 
             ACTIVITIES_AS_NUMPY_WORLD_COORDS[args.athlete_id] = [
                 project_to_world_coordinates(
-                    args.tile_size_px, np.array(coords))
+                    args.tile_size_px, np.array(coords).astype(float))
                 for coords in coordinates
             ]
             logging.info('end::activity_to_world_coordinates')
