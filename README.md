@@ -14,16 +14,21 @@ export $(cat $DOT_ENV | grep -v '^\s*#' | xargs)
 
 ### Setup Terraform Backend State
 
-Terraform state should live in a remote container in order to be leveraged across a variety of machines (developer workstations, CI agents, etc...). The `terraform-backend-state` module provisions and configures the state container:
+Terraform state should live in a remote container in order to be leveraged across a variety of machines (developer workstations, CI agents, etc...). The `terraform-bootstrap` module provisions and configures the state container:
+
+> **Note**: If you're authenticating using a Service Principal then it must have permissions to both `User.Read` and `Application.ReadWrite.OwnedBy` within the `Windows Azure Active Directory` API. This allows it to create AAD applications. It will also need the `owner` in the subscription being deployed to in order to do role assignments.
 
 ```bash
-cd terraform-backend-state/
+cd terraform-bootstrap/
 terraform apply -auto-approve
 
 # capture backend state configuration
 ARM_ACCESS_KEY=$(terraform output backend-state-account-key)
 ARM_ACCOUNT_NAME=$(terraform output backend-state-account-name)
 ARM_CONTAINER_NAME=$(terraform output backend-state-container-name)
+
+# capture container registry ID
+ACR_ID=$(terraform output acr-id)
 
 cd ..
 ```

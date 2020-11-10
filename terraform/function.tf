@@ -1,11 +1,3 @@
-# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/application_insights
-resource "azurerm_application_insights" "ai" {
-  name                = format("%s-ai", local.prefix)
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  application_type    = "other"
-}
-
 # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan
 resource "azurerm_app_service_plan" "function-asp" {
   name                = format("%s-queue-function-asp", local.prefix)

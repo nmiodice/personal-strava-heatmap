@@ -11,3 +11,6 @@ output "backend-state-container-name" {
   value = azurerm_storage_container.tfstate.name
 }
 
+output "acr-id" {
+  value = azurerm_container_registry.acr.id
+}

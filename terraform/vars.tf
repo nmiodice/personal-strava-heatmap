@@ -27,3 +27,23 @@ variable "psql_sku" {
   description = "The SKU to use for the provisioned PSQL instance"
   default     = "B_Gen5_1"
 }
+
+variable "strava_client_id" {
+  type        = string
+  description = "Strava application client ID"
+}
+
+variable "strava_client_secret" {
+  type        = string
+  description = "Strava application client Secret"
+}
+
+variable "google_maps_api_key" {
+  type        = string
+  description = "Google Maps API key"
+}
+
+variable "acr_id" {
+  type        = string
+  description = "ID of the ACR that will host docker images"
+}
