@@ -8,7 +8,7 @@ resource "azurerm_application_insights" "ai" {
 
 # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan
 resource "azurerm_app_service_plan" "function-asp" {
-  name                = format("%s-asp", local.prefix)
+  name                = format("%s-queue-function-asp", local.prefix)
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "FunctionApp"

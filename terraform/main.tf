@@ -16,6 +16,12 @@ provider "azurerm" {
   features {}
 }
 
+terraform {
+  backend "azurerm" {
+    key = "terraform.tfstate"
+  }
+}
+
 # used as a random slug for each resource name
 resource "random_string" "rand" {
   length  = 4
