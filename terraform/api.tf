@@ -14,7 +14,7 @@ resource "azurerm_app_service_plan" "api-asp" {
 
 locals {
   acr_id_split = split("/", var.acr_id)
-  acr_name = element(local.acr_id_split, length(local.acr_id_split) - 1)
+  acr_name     = element(local.acr_id_split, length(local.acr_id_split) - 1)
 }
 
 # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service
@@ -35,7 +35,7 @@ resource "azurerm_app_service" "api" {
   app_settings = {
     PORT : 8080
     APPINSIGHTS_INSTRUMENTATIONKEY : azurerm_application_insights.ai.instrumentation_key
-    WEBSITES_ENABLE_APP_SERVICE_STORAGE: false
+    WEBSITES_ENABLE_APP_SERVICE_STORAGE : true
     HTTP_CLIENT_TIMEOUT_SECONDS : "5s"
 
     STRAVA_CLIENT_ID : var.strava_client_id
@@ -70,5 +70,36 @@ resource "azurerm_app_service" "api" {
     ignore_changes = [
       site_config[0].linux_fx_version
     ]
+  }
+}
+
+resource "azurerm_monitor_diagnostic_setting" "api-log-settings" {
+  name               = "logs-and-metrics-capture"
+  target_resource_id = azurerm_app_service.api.id
+  storage_account_id = azurerm_storage_account.sa.id
+
+  log {
+    category = "AppServiceHTTPLogs"
+    retention_policy {
+      enabled = true
+      days    = 180
+    }
+  }
+
+  log {
+    category = "AppServiceConsoleLogs"
+    retention_policy {
+      enabled = true
+      days    = 180
+    }
+  }
+
+  metric {
+    category = "AllMetrics"
+
+    retention_policy {
+      enabled = true
+      days    = 180
+    }
   }
 }
