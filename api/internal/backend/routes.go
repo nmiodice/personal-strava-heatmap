@@ -24,7 +24,7 @@ const (
 	ResponseStatus             = "status"
 	ResponseActivitiesIncluded = "activities"
 	ResponseActivitiesCount    = "activity_count"
-	ResponseMapParams          = "map_params"
+	ResponseTileBatchCount     = "tile_batch_count"
 )
 
 type HttpRoutes struct {
@@ -264,7 +264,7 @@ var getBuildMapRoute = func(
 
 		c.JSON(202, gin.H{
 			ResponseStatus:          "started",
-			ResponseMapParams:       messages,
+			ResponseTileBatchCount:  len(messageBatches),
 			ResponseActivitiesCount: len(dataRefs),
 		})
 	}
