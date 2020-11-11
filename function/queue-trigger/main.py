@@ -355,7 +355,7 @@ def process_coordinate_summary(
     blurredImageMap = blurredImageMap * (255.0 / maxPxVal)
     blurredImageMap = blurredImageMap.astype(np.uint8, copy=False)
 
-    return Image.fromarray(blurredImageMap, 'RGBA')
+    return Image.fromarray(blurredImageMap, 'RGBA').quantize()
 
 
 def parse_activity_coordinates(docs: List[JsonDict]) -> np.ndarray:
