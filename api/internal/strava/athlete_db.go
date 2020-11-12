@@ -3,7 +3,6 @@ package strava
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
@@ -79,7 +78,6 @@ func (ad athleteDB) UnsyncedActivities(ctx context.Context, athleteID int) ([]in
 }
 
 func (ad athleteDB) UpdateActivityWithDataRef(ctx context.Context, athleteID int, activityID int64, dataRef string) error {
-	log.Printf("%d | %d", athleteID, activityID)
 	return ad.db.InTx(ctx, pgx.RepeatableRead, func(tx pgx.Tx) error {
 		row := tx.QueryRow(ctx, updateActivityWithDataRefSQL, athleteID, activityID, dataRef)
 		var updatedActivityID int64

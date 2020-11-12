@@ -53,12 +53,6 @@ type AthleteToken struct {
 	Athlete     int
 }
 
-type ActivitySummary struct {
-	Total    int
-	New      []int64
-	Unsynced []int64
-}
-
 type Activities struct {
 	Collection []Activity
 }

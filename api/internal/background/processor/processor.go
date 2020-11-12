@@ -2,30 +2,42 @@ package processor
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"time"
+
+	"github.com/nmiodice/personal-strava-heatmap/internal/locks"
 )
 
-type ProcessorResults map[string]interface{}
-type ProcessorFunc func() (ProcessorResults, error)
+type ProcessorFunc func() error
 type ProcessorConfiguration struct {
 	Func     ProcessorFunc
 	WaitTime time.Duration
 	Name     string
+	Lock     locks.Lock
 }
 
 func runLoop(ctx context.Context, config ProcessorConfiguration) {
+	var theFunc ProcessorFunc = config.Func
+	if config.Lock != nil {
+		theFunc = wrapFuncWithLock(ctx, config.Func, config.Lock)
+	}
+
 	for {
-		results, err := config.Func()
+		err := theFunc()
 		if err != nil {
 			log.Printf("Processing failed for configuration %s: %+v", config.Name, err)
-		} else {
-			jsonBytes, _ := json.Marshal(results)
-			log.Printf("Processing complete for %s. Results: %s", config.Name, string(jsonBytes))
 		}
 
 		time.Sleep(config.WaitTime)
+	}
+}
+
+func wrapFuncWithLock(ctx context.Context, pFunc ProcessorFunc, lock locks.Lock) ProcessorFunc {
+	return func() error {
+		gotLock, err := lock.WithLock(ctx, pFunc)
+
+		log.Printf("GOT_LOCK: %+v | GOT_ERROR: %+v", gotLock, err)
+		return err
 	}
 }
 

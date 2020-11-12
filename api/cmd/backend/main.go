@@ -26,6 +26,12 @@ import (
 	"github.com/nmiodice/personal-strava-heatmap/internal/background/processor"
 )
 
+const (
+	tokenRefreshLockID        = 1
+	activityListRefreshLockID = 2
+	activityDownloadLockID    = 3
+)
+
 func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.Engine {
 	router := gin.Default()
 
@@ -37,7 +43,7 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/tokenexchange", routes.TokenExchange)
 	router.GET("/profile", routes.ProfileRoute)
 	router.GET("/unprocessedactivities", routes.UnprocessedActivitiesRoute)
-	router.GET("/syncactivities", routes.SyncActivitiesRoute)
+	router.GET("/ImportMissingActivityStreams", routes.SyncActivitiesRoute)
 	router.GET("/buildmap", routes.BuildMapRoute)
 
 	router.Use(routes.StaticFileServer("/static"))
@@ -53,7 +59,23 @@ func runHTTPServerForever(config *backend.Config, deps *backend.Dependencies) {
 }
 
 func triggerBackgroundJobs(ctx context.Context, config *backend.Config, deps *backend.Dependencies) {
-	processor.RunForever(ctx, athlete.ActivityRefreshConfig(deps.Strava))
+	// refresh access tokens
+	processor.RunForever(ctx, athlete.AthleteTokenRefreshConfig(
+		ctx,
+		deps.Strava,
+		deps.MakeLockFunc(tokenRefreshLockID)))
+
+	// refresh activities for athletes
+	processor.RunForever(ctx, athlete.AthleteActivityListRefreshConfig(
+		ctx,
+		deps.Strava,
+		deps.MakeLockFunc(activityListRefreshLockID)))
+
+	// sync missing ride data for athletes
+	processor.RunForever(ctx, athlete.AthleteActivityDownloadConfig(
+		ctx,
+		deps.Strava,
+		deps.MakeLockFunc(activityDownloadLockID)))
 }
 
 func main() {
@@ -64,6 +86,6 @@ func main() {
 		log.Fatalf("Error configuring application dependencies: %+v", err)
 	}
 
-	// triggerBackgroundJobs(ctx, config, deps)
+	triggerBackgroundJobs(ctx, config, deps)
 	runHTTPServerForever(config, deps)
 }

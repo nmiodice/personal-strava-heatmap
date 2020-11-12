@@ -129,7 +129,7 @@ var getUnprocessedActivitiesRoute = func(stravaSvc *strava.StravaService) gin.Ha
 			return
 		}
 
-		res, err := stravaSvc.Athlete.RefreshActivities(c.Request.Context(), token)
+		res, err := stravaSvc.Athlete.ImportNewActivities(c.Request.Context(), token)
 		if err != nil {
 			c.JSON(500, gin.H{
 				ResponseError: err.Error(),
@@ -153,7 +153,7 @@ var getSyncActivitiesRoute = func(stravaSvc *strava.StravaService) gin.HandlerFu
 			return
 		}
 
-		res, err := stravaSvc.Athlete.SyncActivities(c.Request.Context(), token)
+		res, err := stravaSvc.Athlete.ImportMissingActivityStreams(c.Request.Context(), token)
 		if err != nil {
 			c.JSON(500, gin.H{
 				ResponseError:            err.Error(),

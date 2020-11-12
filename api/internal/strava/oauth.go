@@ -3,6 +3,7 @@ package strava
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -69,7 +70,39 @@ func (o OAuthService) RefreshAuthToken(ctx context.Context, athleteID int) (*sdk
 		Athlete:     athleteID,
 	}
 
+	log.Printf("refreshed token for athlete '%d'", athleteID)
 	return response, nil
+}
+
+func (o OAuthService) GetAllCurrentAthleteAuthTokens(ctx context.Context) (map[int]sdk.StravaTokens, error) {
+	return o.db.getAllCurrentAthleteAuthTokens(ctx)
+}
+
+func (d oauthDB) getAllCurrentAthleteAuthTokens(ctx context.Context) (map[int]sdk.StravaTokens, error) {
+	tokenMap := map[int]sdk.StravaTokens{}
+	err := d.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, getAllCurrentAthleteAuthTokensSQL)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var id int
+			tokens := sdk.StravaTokens{}
+			expiresAt := time.Time{}
+			if err := rows.Scan(&id, &tokens.AccessToken, &expiresAt, &tokens.RefreshToken); err != nil {
+				return err
+			}
+
+			tokens.ExpiresAt = expiresAt.UTC().Unix()
+			tokenMap[id] = tokens
+		}
+
+		return nil
+	})
+
+	return tokenMap, err
 }
 
 func (d oauthDB) persistTokens(ctx context.Context, athleteID int, tokens *sdk.StravaTokens) error {
@@ -131,9 +164,9 @@ INSERT INTO
 	(athlete_id, access_token, access_token_expires_at, refresh_token)
 VALUES
 	($1, $2, $3, $4)
-ON CONFLICT (athlete_id) 
+ON CONFLICT (access_token) 
 	DO UPDATE
-		SET athlete_id = $1, access_token = $2, access_token_expires_at = $3, refresh_token = $4
+		SET access_token = $2
 RETURNING
 	athlete_id
 `
@@ -145,6 +178,19 @@ FROM
 	StravaToken
 WHERE
 	athlete_id = $1
+ORDER BY
+	created_at DESC
+LIMIT
+	1
+`
+
+var getAllCurrentAthleteAuthTokensSQL = `
+SELECT DISTINCT ON (athlete_id)
+	athlete_id, access_token, access_token_expires_at, refresh_token
+FROM
+	StravaToken
+ORDER BY
+	athlete_id, created_at DESC
 `
 
 var getAthleteForTokenSQL = `

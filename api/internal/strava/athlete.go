@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
-	"github.com/nmiodice/personal-strava-heatmap/internal/concurrency"
+	"github.com/hashicorp/go-multierror"
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
@@ -46,35 +45,21 @@ func (as AthleteService) GetActivityDataRefs(ctx context.Context, token string) 
 	return as.athleteDB.GetActivityDataRefs(ctx, athleteID)
 }
 
-func (as AthleteService) RefreshActivities(ctx context.Context, token string) (*sdk.ActivitySummary, error) {
-	athleteID, err := as.oauthDB.getAthleteForAuthToken(ctx, token)
-	if err != nil {
-		return nil, err
-	}
-
+func (as AthleteService) ImportNewActivities(ctx context.Context, token string) (int, error) {
 	activities, err := as.stravaSDK.ListAllActivities(ctx, token)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	newActivities, err := as.athleteDB.InsertActivities(ctx, activities)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	unsyncedActivities, err := as.athleteDB.UnsyncedActivities(ctx, athleteID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &sdk.ActivitySummary{
-		Total:    len(activities),
-		New:      newActivities,
-		Unsynced: unsyncedActivities,
-	}, nil
+	return len(newActivities), nil
 }
 
-func (as AthleteService) SyncActivities(ctx context.Context, token string) (int, error) {
+func (as AthleteService) ImportMissingActivityStreams(ctx context.Context, token string) (int, error) {
 	athleteID, err := as.oauthDB.getAthleteForAuthToken(ctx, token)
 	if err != nil {
 		return 0, err
@@ -86,31 +71,26 @@ func (as AthleteService) SyncActivities(ctx context.Context, token string) (int,
 	}
 
 	count := 0
-	countSem := concurrency.NewSemaphore(1)
-	funcs := make([](func() error), len(unsyncedActivities))
-	for i, activityID := range unsyncedActivities {
+	var errors *multierror.Error
+	for _, activityID := range unsyncedActivities {
 		theActivity := activityID
-		funcs[i] = func() error {
-			err := as.syncSingleActivity(ctx, token, athleteID, theActivity)
-			if err != nil {
-				return err
-			}
-
-			time.Sleep(1 * time.Second) // agressive rate limit on Strava API...
-			countSem.Acquire(1)
-			defer countSem.Release(1)
+		err := as.syncSingleActivity(ctx, token, athleteID, theActivity)
+		if err != nil {
+			errors = multierror.Append(errors, err)
+		} else {
 			count++
-			log.Printf("Downloaded %d of %d activities", count, len(unsyncedActivities))
-			return nil
 		}
+		log.Printf("downloaded %d of %d activities", count, len(unsyncedActivities))
 	}
 
-	err = concurrency.NewSemaphore(as.concurrencyLimit).WithRateLimit(funcs, false)
-	return count, err
+	return count, errors
 }
 
 func (as AthleteService) syncSingleActivity(ctx context.Context, token string, athleteID int, activityID int64) error {
 	activity, err := as.stravaSDK.GetActivityBytes(ctx, token, activityID)
+	if err == sdk.ErrorNotFound {
+		return nil
+	}
 	if err != nil {
 		return err
 	}

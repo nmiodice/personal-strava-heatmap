@@ -14,11 +14,11 @@ type rateLimitDB struct {
 }
 
 func (rld rateLimitDB) UpdateLimittedUntilTime(ctx context.Context, limitUntil time.Time) error {
-	return rld.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
+	return rld.db.InTx(ctx, pgx.ReadCommitted, func(tx pgx.Tx) error {
 		row := tx.QueryRow(ctx, updateLimittedUntilTimeSQL, limitUntil)
 		var id bool
 		if err := row.Scan(&id); err != nil {
-			return fmt.Errorf("fetching updating limited_until time: %w", err)
+			return fmt.Errorf("updating limited_until time: %w", err)
 		}
 
 		return nil
@@ -27,7 +27,7 @@ func (rld rateLimitDB) UpdateLimittedUntilTime(ctx context.Context, limitUntil t
 
 func (rld rateLimitDB) GetLimittedUntilTime(ctx context.Context) time.Time {
 	var limitUntil time.Time
-	_ = rld.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
+	_ = rld.db.InTx(ctx, pgx.ReadCommitted, func(tx pgx.Tx) error {
 		row := tx.QueryRow(ctx, getLimitedUntilTimeSQL)
 
 		// if an error occurrs, it probably indicates that there is no data in the table yet

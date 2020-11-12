@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
+	"github.com/nmiodice/personal-strava-heatmap/internal/locks"
 	"github.com/nmiodice/personal-strava-heatmap/internal/maps"
 	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
@@ -12,11 +13,11 @@ import (
 )
 
 type Dependencies struct {
-	DB      *database.DB
-	Strava  *strava.StravaService
-	Map     *maps.MapService
-	Storage *storage.AzureBlobstore
-	Queue   queue.QueueService
+	MakeLockFunc func(int) locks.Lock
+	Strava       *strava.StravaService
+	Map          *maps.MapService
+	Storage      *storage.AzureBlobstore
+	Queue        queue.QueueService
 }
 
 func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error) {
@@ -58,7 +59,9 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 	}
 
 	deps := &Dependencies{
-		DB:      db,
+		MakeLockFunc: func(id int) locks.Lock {
+			return locks.NewDistributedLock(db, id)
+		},
 		Strava:  stravaService,
 		Map:     maps.NewMapService(),
 		Storage: storageClient,
