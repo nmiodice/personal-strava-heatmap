@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/nmiodice/personal-strava-heatmap/internal/database"
 )
 
 func makeHTTPError(code int) error {
@@ -36,12 +38,13 @@ type StravaSDKConfig struct {
 	Timeout      time.Duration
 	ClientID     string
 	ClientSecret string
+	DB           *database.DB
 }
 
 // NewStravaSDK create a new SDK
 func NewStravaSDK(config StravaSDKConfig) StravaSDK {
 	return sdkImpl{
-		client:       newHTTPClient(config.Timeout),
+		client:       newHTTPClient(config.Timeout, config.DB),
 		clientID:     config.ClientID,
 		clientSecret: config.ClientSecret,
 	}

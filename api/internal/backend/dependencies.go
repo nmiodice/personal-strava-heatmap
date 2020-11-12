@@ -38,6 +38,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		Timeout:      config.HttpClient.Timeout,
 		ClientID:     config.Strava.ClientID,
 		ClientSecret: config.Strava.ClientSecret,
+		DB:           db,
 	})
 	athleteSvc := strava.NewAthleteService(stravaSDK, db, config.Strava.ConcurrencyLimit, storageClient)
 
