@@ -1,8 +1,8 @@
-package strava
+package sdk
 
 import "time"
 
-type authorizationCodeResponse struct {
+type AuthorizationCodeResponse struct {
 	TokenType    string `json:"token_type"`
 	ExpiresAt    int64  `json:"expires_at"`
 	ExpiresIn    int    `json:"expires_in"`
@@ -30,15 +30,15 @@ type authorizationCodeResponse struct {
 	} `json:"athlete"`
 }
 
-func (acr authorizationCodeResponse) tokens() *stravaTokens {
-	return &stravaTokens{
+func (acr AuthorizationCodeResponse) Tokens() *StravaTokens {
+	return &StravaTokens{
 		AccessToken:  acr.AccessToken,
 		ExpiresAt:    acr.ExpiresAt,
 		RefreshToken: acr.RefreshToken,
 	}
 }
 
-type stravaTokens struct {
+type StravaTokens struct {
 	AccessToken  string `json:"access_token"`
 	ExpiresAt    int64  `json:"expires_at"`
 	RefreshToken string `json:"refresh_token"`

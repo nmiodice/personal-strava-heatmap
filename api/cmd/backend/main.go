@@ -22,6 +22,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nmiodice/personal-strava-heatmap/internal/backend"
+	"github.com/nmiodice/personal-strava-heatmap/internal/background/athlete"
+	"github.com/nmiodice/personal-strava-heatmap/internal/background/processor"
 )
 
 func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.Engine {
@@ -43,6 +45,17 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	return router
 }
 
+func runHTTPServerForever(config *backend.Config, deps *backend.Dependencies) {
+	routes := backend.GetRoutes(config, deps)
+	router := configureRouter(config, routes)
+
+	router.Run(fmt.Sprintf(":%d", config.HttpServer.Port))
+}
+
+func triggerBackgroundJobs(ctx context.Context, config *backend.Config, deps *backend.Dependencies) {
+	processor.RunForever(ctx, athlete.ActivityRefreshConfig(deps.Strava))
+}
+
 func main() {
 	ctx := context.Background()
 	config := backend.GetConfig(ctx)
@@ -51,8 +64,6 @@ func main() {
 		log.Fatalf("Error configuring application dependencies: %+v", err)
 	}
 
-	routes := backend.GetRoutes(config, deps)
-	router := configureRouter(config, routes)
-
-	router.Run(fmt.Sprintf(":%d", config.HttpServer.Port))
+	triggerBackgroundJobs(ctx, config, deps)
+	runHTTPServerForever(config, deps)
 }

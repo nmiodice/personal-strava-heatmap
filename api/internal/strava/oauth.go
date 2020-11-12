@@ -2,56 +2,45 @@ package strava
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	resty "github.com/go-resty/resty/v2"
 	"github.com/jackc/pgx/v4"
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
+	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
 )
-
-type oauthClient struct {
-	httpClient         *resty.Client
-	stravaClientID     string
-	stravaClientSecret string
-}
 
 type oauthDB struct {
 	db *database.DB
 }
 
 type OAuthService struct {
-	client oauthClient
-	db     oauthDB
+	stravaSDK sdk.StravaSDK
+	db        oauthDB
 }
 
-func NewOAuthService(httpClient *resty.Client, db *database.DB, stravaClientID, stravaClientSecret string) *OAuthService {
+func NewOAuthService(stravaSDK sdk.StravaSDK, db *database.DB) *OAuthService {
 	return &OAuthService{
-		client: oauthClient{
-			httpClient:         httpClient,
-			stravaClientID:     stravaClientID,
-			stravaClientSecret: stravaClientSecret,
-		},
+		stravaSDK: stravaSDK,
 		db: oauthDB{
 			db: db,
 		},
 	}
 }
 
-func (o OAuthService) ExchangeAuthToken(ctx context.Context, request *TokenExchangeCode) (*AthleteToken, error) {
+func (o OAuthService) ExchangeAuthToken(ctx context.Context, request *sdk.TokenExchangeCode) (*sdk.AthleteToken, error) {
 
-	authCodeResponse, err := o.client.doExchangeAuthToken(request)
+	authCodeResponse, err := o.stravaSDK.ExchangeAuthToken(request)
 	if err != nil {
 		return nil, err
 	}
 
-	err = o.db.persistTokens(ctx, authCodeResponse.Athlete.ID, authCodeResponse.tokens())
+	err = o.db.persistTokens(ctx, authCodeResponse.Athlete.ID, authCodeResponse.Tokens())
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AthleteToken{
+	response := &sdk.AthleteToken{
 		AccessToken: authCodeResponse.AccessToken,
 		Athlete:     authCodeResponse.Athlete.ID,
 	}
@@ -59,13 +48,13 @@ func (o OAuthService) ExchangeAuthToken(ctx context.Context, request *TokenExcha
 	return response, nil
 }
 
-func (o OAuthService) RefreshAuthToken(ctx context.Context, athleteID int) (*AthleteToken, error) {
+func (o OAuthService) RefreshAuthToken(ctx context.Context, athleteID int) (*sdk.AthleteToken, error) {
 	oldTokens, err := o.db.getTokensForAthlete(ctx, athleteID)
 	if err != nil {
 		return nil, err
 	}
 
-	newTokens, err := o.client.doRefreshAuthToken(oldTokens.RefreshToken)
+	newTokens, err := o.stravaSDK.RefreshAuthToken(oldTokens.RefreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +64,7 @@ func (o OAuthService) RefreshAuthToken(ctx context.Context, athleteID int) (*Ath
 		return nil, err
 	}
 
-	response := &AthleteToken{
+	response := &sdk.AthleteToken{
 		AccessToken: newTokens.AccessToken,
 		Athlete:     athleteID,
 	}
@@ -83,45 +72,7 @@ func (o OAuthService) RefreshAuthToken(ctx context.Context, athleteID int) (*Ath
 	return response, nil
 }
 
-func (c oauthClient) doRefreshAuthToken(refreshToken string) (*stravaTokens, error) {
-	res, err := c.httpClient.R().
-		SetFormData(map[string]string{
-			"client_id":     c.stravaClientID,
-			"client_secret": c.stravaClientSecret,
-			"grant_type":    "refresh_token",
-			"refresh_token": refreshToken,
-		}).
-		Post("https://www.strava.com/api/v3/oauth/token")
-
-	if err != nil {
-		return nil, err
-	}
-
-	tokens := &stravaTokens{}
-	err = json.Unmarshal(res.Body(), tokens)
-	return tokens, err
-}
-
-func (c oauthClient) doExchangeAuthToken(request *TokenExchangeCode) (*authorizationCodeResponse, error) {
-	res, err := c.httpClient.R().
-		SetFormData(map[string]string{
-			"client_id":     c.stravaClientID,
-			"client_secret": c.stravaClientSecret,
-			"grant_type":    "authorization_code",
-			"code":          request.Code,
-		}).
-		Post("https://www.strava.com/api/v3/oauth/token")
-
-	if err != nil {
-		return nil, err
-	}
-
-	authCodeResponse := &authorizationCodeResponse{}
-	err = json.Unmarshal(res.Body(), authCodeResponse)
-	return authCodeResponse, err
-}
-
-func (d oauthDB) persistTokens(ctx context.Context, athleteID int, tokens *stravaTokens) error {
+func (d oauthDB) persistTokens(ctx context.Context, athleteID int, tokens *sdk.StravaTokens) error {
 	return d.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
 		row := tx.QueryRow(
 			ctx,
@@ -140,8 +91,8 @@ func (d oauthDB) persistTokens(ctx context.Context, athleteID int, tokens *strav
 	})
 }
 
-func (d oauthDB) getTokensForAthlete(ctx context.Context, athleteID int) (*stravaTokens, error) {
-	tokens := stravaTokens{}
+func (d oauthDB) getTokensForAthlete(ctx context.Context, athleteID int) (*sdk.StravaTokens, error) {
+	tokens := sdk.StravaTokens{}
 	expiresAt := time.Time{}
 
 	err := d.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {

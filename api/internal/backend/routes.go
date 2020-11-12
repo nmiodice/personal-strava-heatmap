@@ -13,6 +13,7 @@ import (
 	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
+	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
 )
 
 const (
@@ -101,7 +102,7 @@ var getMapRoute = func(templateFileName string, stravaSvc *strava.StravaService,
 
 var getTokenExchangeRouteFunc = func(stravaSvc *strava.StravaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		res, err := stravaSvc.Auth.ExchangeAuthToken(c.Request.Context(), &strava.TokenExchangeCode{
+		res, err := stravaSvc.Auth.ExchangeAuthToken(c.Request.Context(), &sdk.TokenExchangeCode{
 			Code: c.Query(QueryParamCode),
 		})
 
