@@ -41,10 +41,6 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/index.html", routes.IndexRoute)
 	router.GET("/map.html", routes.MapRoute)
 	router.GET("/tokenexchange", routes.TokenExchange)
-	router.GET("/profile", routes.ProfileRoute)
-	router.GET("/unprocessedactivities", routes.UnprocessedActivitiesRoute)
-	router.GET("/ImportMissingActivityStreams", routes.SyncActivitiesRoute)
-	router.GET("/buildmap", routes.BuildMapRoute)
 
 	router.Use(routes.StaticFileServer("/static"))
 
@@ -72,7 +68,7 @@ func triggerBackgroundJobs(ctx context.Context, config *backend.Config, deps *ba
 		deps.MakeLockFunc(activityListRefreshLockID)))
 
 	// sync missing ride data for athletes
-	processor.RunForever(ctx, athlete.AthleteActivityDownloadConfig(
+	processor.RunForever(ctx, athlete.AthleteActivityStreamRefreshConfig(
 		ctx,
 		deps.Strava,
 		deps.MakeLockFunc(activityDownloadLockID)))

@@ -70,33 +70,41 @@ func (as AthleteService) ImportMissingActivityStreams(ctx context.Context, token
 		return 0, err
 	}
 
-	count := 0
+	successCount := 0
+	notFoundCount := 0
 	countSem := concurrency.NewSemaphore(1)
 	funcs := make([](func() error), len(unsyncedActivities))
 	for i, activityID := range unsyncedActivities {
 		theActivity := activityID
 		funcs[i] = func() error {
 			err := as.syncSingleActivity(ctx, token, athleteID, theActivity)
-			if err != nil {
+			if err != nil && err != sdk.ErrorNotFound {
 				return err
 			}
 
 			countSem.Acquire(1)
 			defer countSem.Release(1)
-			count++
-			log.Printf("downloaded %d of %d activities", count, len(unsyncedActivities))
+
+			if err == sdk.ErrorNotFound {
+				notFoundCount++
+				log.Printf("activity '%d' for athlete '%d' was not found", activityID, athleteID)
+			} else {
+				successCount++
+				log.Printf("downloaded %d of %d activities", successCount+notFoundCount, len(unsyncedActivities))
+			}
+
 			return nil
 		}
 	}
 
 	err = concurrency.NewSemaphore(as.concurrencyLimit).WithRateLimit(funcs, false)
-	return count, err
+	return successCount, err
 }
 
 func (as AthleteService) syncSingleActivity(ctx context.Context, token string, athleteID int, activityID int64) error {
 	activity, err := as.stravaSDK.GetActivityBytes(ctx, token, activityID)
-	if err == sdk.ErrorNotFound {
-		return nil
+	if err == nil {
+		return err
 	}
 	if err != nil {
 		return err

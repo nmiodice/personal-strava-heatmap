@@ -11,14 +11,14 @@ import (
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
 )
 
-func makeActivityDownloadFunc(ctx context.Context, stravaSvc *strava.StravaService, lock locks.Lock) processor.ProcessorFunc {
+func makeActivityStreamRefreshFunc(ctx context.Context, stravaSvc *strava.StravaService, lock locks.Lock) processor.ProcessorFunc {
 	return func() error {
 		athleteTokens, err := stravaSvc.Auth.GetAllCurrentAthleteAuthTokens(ctx)
 		if err != nil {
 			return err
 		}
 
-		log.Printf("will download activities for %d athletes", len(athleteTokens))
+		log.Printf("will download activity streams for %d athletes", len(athleteTokens))
 		var errors *multierror.Error
 		for id, token := range athleteTokens {
 			inserted, err := stravaSvc.Athlete.ImportMissingActivityStreams(ctx, token.AccessToken)
@@ -38,11 +38,11 @@ func makeActivityDownloadFunc(ctx context.Context, stravaSvc *strava.StravaServi
 	}
 }
 
-func AthleteActivityDownloadConfig(ctx context.Context, stravaSvc *strava.StravaService, lock locks.Lock) processor.ProcessorConfiguration {
+func AthleteActivityStreamRefreshConfig(ctx context.Context, stravaSvc *strava.StravaService, lock locks.Lock) processor.ProcessorConfiguration {
 	return processor.ProcessorConfiguration{
-		Func:     makeActivityDownloadFunc(ctx, stravaSvc, lock),
+		Func:     makeActivityStreamRefreshFunc(ctx, stravaSvc, lock),
 		WaitTime: time.Hour * 1,
-		Name:     "AthleteActivityDownload",
+		Name:     "AthleteActivityStreamRefresh",
 		Lock:     lock,
 	}
 }
