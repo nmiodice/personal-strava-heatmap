@@ -90,7 +90,7 @@ func (as AthleteService) ImportMissingActivityStreams(ctx context.Context, token
 				log.Printf("activity '%d' for athlete '%d' was not found", activityID, athleteID)
 			} else {
 				successCount++
-				log.Printf("downloaded %d of %d activities", successCount+notFoundCount, len(unsyncedActivities))
+				log.Printf("downloaded '%d' of '%d' activitiesfor athlete '%d'", successCount+notFoundCount, len(unsyncedActivities), athleteID)
 			}
 
 			return nil
@@ -103,9 +103,6 @@ func (as AthleteService) ImportMissingActivityStreams(ctx context.Context, token
 
 func (as AthleteService) syncSingleActivity(ctx context.Context, token string, athleteID int, activityID int64) error {
 	activity, err := as.stravaSDK.GetActivityBytes(ctx, token, activityID)
-	if err == nil {
-		return err
-	}
 	if err != nil {
 		return err
 	}

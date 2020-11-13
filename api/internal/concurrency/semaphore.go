@@ -34,6 +34,10 @@ func (s Semaphore) Release(n int) {
 }
 
 func (s Semaphore) WithRateLimit(funcs []func() error, stopOnError bool) error {
+	if len(funcs) == 0 {
+		return nil
+	}
+
 	errChan := make(chan error)
 	doneChan := make(chan empty)
 

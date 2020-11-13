@@ -100,7 +100,6 @@ func parseLatLonList(data []byte) [][]float64 {
 			for _, dataElem := range res.Data {
 				lat, lon, err := parseLatLon(dataElem)
 				if err != nil {
-					fmt.Println(err)
 					continue
 				}
 
