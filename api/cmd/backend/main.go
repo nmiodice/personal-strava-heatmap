@@ -71,6 +71,7 @@ func triggerBackgroundJobs(ctx context.Context, config *backend.Config, deps *ba
 	processor.RunForever(ctx, athlete.AthleteActivityStreamRefreshConfig(
 		ctx,
 		deps.Strava,
+		deps.Map,
 		deps.MakeLockFunc(activityDownloadLockID)))
 }
 

@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,9 +9,6 @@ import (
 
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	"github.com/nmiodice/personal-strava-heatmap/internal/batch"
-	"github.com/nmiodice/personal-strava-heatmap/internal/concurrency"
-	"github.com/nmiodice/personal-strava-heatmap/internal/maps"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
 )
 
@@ -26,12 +22,6 @@ const (
 	ResponseActivitiesIncluded = "activities"
 	ResponseActivitiesCount    = "activity_count"
 	ResponseTileBatchCount     = "tile_batch_count"
-)
-
-var (
-	ErrorMissingToken  = errors.New("missing authentication token in reuqest")
-	ErrorStravaAPI     = errors.New("encountered issue with Strava API")
-	ErrorInternalError = errors.New("encountered issue with backend subsystem")
 )
 
 type HttpRoutes struct {
@@ -122,7 +112,7 @@ var getTokenExchangeRouteFunc = func(config *Config, deps *Dependencies) gin.Han
 
 			if imported > 0 {
 				log.Printf("rebuilding map for athlete '%d'", res.Athlete)
-				dataRefs, messageBatches, err := rebuildMapForAthlete(bgCtx, res.AccessToken, config, deps)
+				dataRefs, messageBatches, err := deps.Map.RebuildMapForAthlete(bgCtx, res.AccessToken)
 				if err != nil {
 					log.Printf("error encountered rebuilding map for athlete '%d': %+v", res.Athlete, err)
 					return
@@ -131,69 +121,4 @@ var getTokenExchangeRouteFunc = func(config *Config, deps *Dependencies) gin.Han
 			}
 		}()
 	}
-}
-
-func rebuildMapForAthlete(ctx context.Context, token string, config *Config, deps *Dependencies) ([]string, []interface{}, error) {
-	if token == "" {
-		return nil, nil, ErrorMissingToken
-	}
-
-	dataRefs, err := deps.Strava.Athlete.GetActivityDataRefs(ctx, token)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
-	}
-
-	mapSem := concurrency.NewSemaphore(1)
-	tiles := maps.NewTileSet()
-
-	funcs := [](func() error){}
-	for _, ref := range dataRefs {
-		theRef := ref
-		funcs = append(funcs, func() error {
-			bytes, err := deps.Storage.GetObjectBytes(ctx, theRef)
-			if err != nil {
-				return fmt.Errorf("%w: %+v", ErrorInternalError, err)
-			}
-
-			mapSem.Acquire(1)
-			defer mapSem.Release(1)
-
-			deps.Map.AddToTileSet(bytes, config.Map.MinTileZoom, config.Map.MaxTileZoom, &tiles)
-			return nil
-		})
-	}
-
-	if err = concurrency.NewSemaphore(config.Storage.ConcurrencyLimit).WithRateLimit(funcs, true); err != nil {
-		return nil, nil, err
-	}
-
-	mapParams := deps.Map.ComputeMapParams(&tiles)
-	messages := make([]interface{}, len(mapParams))
-	for idx, p := range mapParams {
-		messages[idx] = p
-	}
-
-	athleteID, err := deps.Strava.Athlete.GetAthleteForAuthToken(ctx, token)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
-	}
-
-	mapID, err := deps.Strava.Athlete.GetOrCreateMapID(ctx, token)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
-	}
-
-	messageBatches := batch.ToBatchesWithTransformer(messages, config.Queue.BatchSize, func(batch []interface{}) interface{} {
-		return map[string]interface{}{
-			"coords":     batch,
-			"athlete_id": athleteID,
-			"map_id":     mapID,
-		}
-	})
-
-	if err = deps.Queue.Enqueue(ctx, messageBatches...); err != nil {
-		return nil, nil, fmt.Errorf("%w: %+v", ErrorInternalError, err)
-	}
-
-	return dataRefs, messageBatches, nil
 }

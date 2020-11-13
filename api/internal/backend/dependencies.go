@@ -16,8 +16,6 @@ type Dependencies struct {
 	MakeLockFunc func(int) locks.Lock
 	Strava       *strava.StravaService
 	Map          *maps.MapService
-	Storage      *storage.AzureBlobstore
-	Queue        queue.QueueService
 }
 
 func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error) {
@@ -26,7 +24,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		return nil, err
 	}
 
-	storageClient, err := storage.NewAzureBlobstore(
+	storageService, err := storage.NewAzureBlobstore(
 		ctx,
 		config.Storage.ContainerName,
 		config.Storage.AccountName,
@@ -41,7 +39,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		ClientSecret: config.Strava.ClientSecret,
 		DB:           db,
 	})
-	athleteSvc := strava.NewAthleteService(stravaSDK, db, config.Strava.ConcurrencyLimit, storageClient)
+	athleteSvc := strava.NewAthleteService(stravaSDK, db, config.Strava.ConcurrencyLimit, storageService)
 
 	stravaService := &strava.StravaService{
 		Auth:    strava.NewOAuthService(stravaSDK, db),
@@ -58,14 +56,22 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		return nil, err
 	}
 
+	mapSvc := maps.NewMapService(
+		stravaService,
+		storageService,
+		queueService,
+		config.Map.MinTileZoom,
+		config.Map.MaxTileZoom,
+		config.Queue.BatchSize,
+		config.Storage.ConcurrencyLimit,
+	)
+
 	deps := &Dependencies{
 		MakeLockFunc: func(id int) locks.Lock {
 			return locks.NewDistributedLock(db, id)
 		},
-		Strava:  stravaService,
-		Map:     maps.NewMapService(),
-		Storage: storageClient,
-		Queue:   queueService,
+		Strava: stravaService,
+		Map:    mapSvc,
 	}
 
 	return deps, nil

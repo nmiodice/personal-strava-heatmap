@@ -8,10 +8,11 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/nmiodice/personal-strava-heatmap/internal/background/processor"
 	"github.com/nmiodice/personal-strava-heatmap/internal/locks"
+	"github.com/nmiodice/personal-strava-heatmap/internal/maps"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
 )
 
-func makeActivityStreamRefreshFunc(ctx context.Context, stravaSvc *strava.StravaService, lock locks.Lock) processor.ProcessorFunc {
+func makeActivityStreamRefreshFunc(ctx context.Context, stravaSvc *strava.StravaService, mapService *maps.MapService, lock locks.Lock) processor.ProcessorFunc {
 	return func() error {
 		athleteTokens, err := stravaSvc.Auth.GetAllCurrentAthleteAuthTokens(ctx)
 		if err != nil {
@@ -27,7 +28,19 @@ func makeActivityStreamRefreshFunc(ctx context.Context, stravaSvc *strava.Strava
 			}
 
 			log.Printf("downloaded '%d' new activity streams for athlete '%d'", inserted, id)
+			if inserted > 0 {
 
+				// async job to rebuildmap
+				go func() {
+					log.Printf("rebuilding map for athlete '%d'", id)
+					dataRefs, messageBatches, err := mapService.RebuildMapForAthlete(ctx, token.AccessToken)
+					if err != nil {
+						log.Printf("error encountered rebuilding map for athlete '%d': %+v", id, err)
+					} else {
+						log.Printf("rebuilt map using '%d' data refs and '%d' queued messages for athlete '%d'", len(dataRefs), len(messageBatches), id)
+					}
+				}()
+			}
 		}
 
 		if errors != nil {
@@ -38,9 +51,9 @@ func makeActivityStreamRefreshFunc(ctx context.Context, stravaSvc *strava.Strava
 	}
 }
 
-func AthleteActivityStreamRefreshConfig(ctx context.Context, stravaSvc *strava.StravaService, lock locks.Lock) processor.ProcessorConfiguration {
+func AthleteActivityStreamRefreshConfig(ctx context.Context, stravaSvc *strava.StravaService, mapService *maps.MapService, lock locks.Lock) processor.ProcessorConfiguration {
 	return processor.ProcessorConfiguration{
-		Func:     makeActivityStreamRefreshFunc(ctx, stravaSvc, lock),
+		Func:     makeActivityStreamRefreshFunc(ctx, stravaSvc, mapService, lock),
 		WaitTime: time.Hour * 1,
 		Name:     "AthleteActivityStreamRefresh",
 		Lock:     lock,

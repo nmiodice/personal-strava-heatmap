@@ -1,11 +1,15 @@
 package maps
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
-	"math"
 
+	"github.com/nmiodice/personal-strava-heatmap/internal/batch"
+	"github.com/nmiodice/personal-strava-heatmap/internal/concurrency"
+	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
+	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
+	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
 	"github.com/nmiodice/personal-strava-heatmap/internal/types"
 )
 
@@ -14,6 +18,13 @@ const (
 )
 
 type MapService struct {
+	stravaSvc               *strava.StravaService
+	storageSvc              *storage.AzureBlobstore
+	queueSvc                queue.QueueService
+	minTileZoom             int
+	maxTileZoom             int
+	queueBatchSize          int
+	storageConcurrencyLimit int
 }
 
 type mapStruct struct {
@@ -24,6 +35,15 @@ type mapStruct struct {
 type TileSet struct {
 	tiles types.Set
 }
+
+type MapParam struct {
+	FilenamePostfix string    `json:"postfix"`
+	TopLeft         []float64 `json:"tl"`
+	BottomRight     []float64 `json:"br"`
+	Tile            Tile      `json:"tile"`
+}
+
+type MapParams []MapParam
 
 func NewTileSet() TileSet {
 	return TileSet{tiles: types.NewSet()}
@@ -43,16 +63,28 @@ func (ts TileSet) Size() int {
 	return ts.tiles.Size()
 }
 
-func NewMapService() *MapService {
-	return &MapService{}
+func NewMapService(
+	stravaSvc *strava.StravaService,
+	storageSvc *storage.AzureBlobstore,
+	queueSvc queue.QueueService,
+	minTileZoom int,
+	maxTileZoom int,
+	queueBatchSize int,
+	storageConcurrencyLimit int,
+) *MapService {
+	return &MapService{
+		stravaSvc:               stravaSvc,
+		storageSvc:              storageSvc,
+		queueSvc:                queueSvc,
+		minTileZoom:             minTileZoom,
+		maxTileZoom:             maxTileZoom,
+		queueBatchSize:          queueBatchSize,
+		storageConcurrencyLimit: storageConcurrencyLimit,
+	}
 }
 
 func (ms MapService) AddToTileSet(data []byte, minZoom, maxZoom int, tiles *TileSet) {
 	coords := parseLatLonList(data)
-	addTiles(coords, minZoom, maxZoom, tiles)
-}
-
-func addTiles(coords [][]float64, minZoom, maxZoom int, tiles *TileSet) {
 	for z := minZoom; z <= maxZoom; z++ {
 		scale := float64(int(1) << z)
 		for _, coord := range coords {
@@ -65,82 +97,6 @@ func addTiles(coords [][]float64, minZoom, maxZoom int, tiles *TileSet) {
 		}
 	}
 }
-
-func project(lat, lon float64) (float64, float64) {
-	siny := math.Sin(lat * math.Pi / 180.0)
-	siny = math.Min(math.Max(siny, -0.9999), 0.9999)
-	x := TILE_SIZE * (0.5 + lon/360.0)
-	y := TILE_SIZE * (0.5 - math.Log((1+siny)/(1-siny))/(4*math.Pi))
-	return x, y
-}
-
-func parseLatLonList(data []byte) [][]float64 {
-	results := [][]float64{}
-
-	dec := json.NewDecoder(bytes.NewReader(data))
-
-	// read open bracket
-	dec.Token()
-
-	// while the array contains values
-	for dec.More() {
-		var res mapStruct
-		// decode an array value
-		err := dec.Decode(&res)
-
-		// skip non-conforming documents
-		if err != nil {
-			dec.Token()
-			continue
-		}
-
-		// parse lat/lons
-		switch res.Type {
-		case "latlng":
-			for _, dataElem := range res.Data {
-				lat, lon, err := parseLatLon(dataElem)
-				if err != nil {
-					continue
-				}
-
-				results = append(results, []float64{lat, lon})
-			}
-		}
-	}
-
-	return results
-}
-
-func parseLatLon(dataElem interface{}) (float64, float64, error) {
-	asList, ok := dataElem.([]interface{})
-	if !ok {
-		return 0, 0, fmt.Errorf("unexpectedly did not find lat/lon list: %+v", dataElem)
-	}
-
-	if len(asList) != 2 {
-		return 0, 0, fmt.Errorf("unexpectedly did not find correct number of lat/lon: %+v", asList)
-	}
-
-	lat, ok := asList[0].(float64)
-	if !ok {
-		return 0, 0, fmt.Errorf("lat was unexpectly not a float: %+v", asList[0])
-	}
-	lon, ok := asList[1].(float64)
-	if !ok {
-		return 0, 0, fmt.Errorf("lon was unexpectly not a float: %+v", asList[0])
-	}
-
-	return lat, lon, nil
-}
-
-type MapParam struct {
-	FilenamePostfix string    `json:"postfix"`
-	TopLeft         []float64 `json:"tl"`
-	BottomRight     []float64 `json:"br"`
-	Tile            Tile      `json:"tile"`
-}
-
-type MapParams []MapParam
 
 func (ms MapService) ComputeMapParams(tiles *TileSet) MapParams {
 	params := MapParams{}
@@ -166,13 +122,73 @@ func (ms MapService) ComputeMapParams(tiles *TileSet) MapParams {
 	return params
 }
 
-// https://gis.stackexchange.com/questions/17278/calculate-lat-lon-bounds-for-individual-tile-generated-from-gdal2tiles
-func tileToLat(y, z int) float64 {
-	n := math.Pi - 2*math.Pi*float64(y)/math.Pow(2, float64(z))
-	return (180 / math.Pi * math.Atan(0.5*(math.Exp(n)-math.Exp(-n))))
-}
+var (
+	ErrorMissingToken  = errors.New("missing authentication token in reuqest")
+	ErrorStravaAPI     = errors.New("encountered issue with Strava API")
+	ErrorInternalError = errors.New("encountered issue with backend subsystem")
+)
 
-// https://gis.stackexchange.com/questions/17278/calculate-lat-lon-bounds-for-individual-tile-generated-from-gdal2tiles
-func tileToLon(x, z int) float64 {
-	return (float64(x)/math.Pow(2, float64(z))*360 - 180)
+func (ms MapService) RebuildMapForAthlete(ctx context.Context, token string) ([]string, []interface{}, error) {
+	if token == "" {
+		return nil, nil, ErrorMissingToken
+	}
+
+	dataRefs, err := ms.stravaSvc.Athlete.GetActivityDataRefs(ctx, token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
+	}
+
+	mapSem := concurrency.NewSemaphore(1)
+	tiles := NewTileSet()
+
+	funcs := [](func() error){}
+	for _, ref := range dataRefs {
+		theRef := ref
+		funcs = append(funcs, func() error {
+			bytes, err := ms.storageSvc.GetObjectBytes(ctx, theRef)
+			if err != nil {
+				return fmt.Errorf("%w: %+v", ErrorInternalError, err)
+			}
+
+			mapSem.Acquire(1)
+			defer mapSem.Release(1)
+
+			ms.AddToTileSet(bytes, ms.minTileZoom, ms.maxTileZoom, &tiles)
+			return nil
+		})
+	}
+
+	if err = concurrency.NewSemaphore(ms.storageConcurrencyLimit).WithRateLimit(funcs, true); err != nil {
+		return nil, nil, err
+	}
+
+	mapParams := ms.ComputeMapParams(&tiles)
+	messages := make([]interface{}, len(mapParams))
+	for idx, p := range mapParams {
+		messages[idx] = p
+	}
+
+	athleteID, err := ms.stravaSvc.Athlete.GetAthleteForAuthToken(ctx, token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
+	}
+
+	mapID, err := ms.stravaSvc.Athlete.GetOrCreateMapID(ctx, token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
+	}
+
+	messageBatches := batch.ToBatchesWithTransformer(messages, ms.queueBatchSize, func(batch []interface{}) interface{} {
+		return map[string]interface{}{
+			"coords":     batch,
+			"athlete_id": athleteID,
+			"map_id":     mapID,
+		}
+	})
+
+	if err = ms.queueSvc.Enqueue(ctx, messageBatches...); err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorInternalError, err)
+	}
+
+	return dataRefs, messageBatches, nil
 }

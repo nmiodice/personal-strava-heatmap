@@ -13,4 +13,5 @@ require (
 	github.com/jackc/pgx/v4 v4.9.2
 	github.com/sethvargo/go-envconfig v0.3.2
 	gopkg.in/resty.v1 v1.12.0
+	honnef.co/go/tools v0.0.1-2019.2.3
 )
