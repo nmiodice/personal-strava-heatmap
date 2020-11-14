@@ -59,6 +59,22 @@ func (as AthleteService) ImportNewActivities(ctx context.Context, token string) 
 	return len(newActivities), nil
 }
 
+type ActivitySyncSummary struct {
+	Total   int
+	Sunc    int
+	NotSunc int
+	Errored int
+}
+
+func (as AthleteService) GetActivitySyncSummary(ctx context.Context, token string) (*ActivitySyncSummary, error) {
+	athleteID, err := as.oauthDB.getAthleteForAuthToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	return as.athleteDB.GetActivitySyncSummary(ctx, athleteID)
+}
+
 func (as AthleteService) ImportMissingActivityStreams(ctx context.Context, token string) (int, error) {
 	athleteID, err := as.oauthDB.getAthleteForAuthToken(ctx, token)
 	if err != nil {

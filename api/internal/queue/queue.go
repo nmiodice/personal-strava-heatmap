@@ -11,7 +11,7 @@ import (
 )
 
 type QueueService interface {
-	Enqueue(ctx context.Context, msgs ...interface{}) error
+	Enqueue(ctx context.Context, msgs ...interface{}) ([]string, error)
 }
 
 type AzureStorageQueue struct {
@@ -40,19 +40,22 @@ func NewAzureStorageQueue(ctx context.Context, queueName, accountName, accountKe
 	}, nil
 }
 
-func (as AzureStorageQueue) Enqueue(ctx context.Context, msgs ...interface{}) error {
+func (as AzureStorageQueue) Enqueue(ctx context.Context, msgs ...interface{}) ([]string, error) {
+	messageIDs := []string{}
 	for _, msg := range msgs {
 		bytes, err := json.Marshal(msg)
 		if err != nil {
-			return err
+			return messageIDs, err
 		}
 
 		asString := base64.StdEncoding.EncodeToString(bytes)
-		_, err = as.messagesURL.Enqueue(ctx, asString, 0, 0)
+		res, err := as.messagesURL.Enqueue(ctx, asString, 0, 0)
 		if err != nil {
-			return err
+			return messageIDs, err
 		}
+
+		messageIDs = append(messageIDs, res.MessageID.String())
 	}
 
-	return nil
+	return messageIDs, nil
 }

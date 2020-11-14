@@ -41,6 +41,7 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/index.html", routes.IndexRoute)
 	router.GET("/map.html", routes.MapRoute)
 	router.GET("/tokenexchange", routes.TokenExchange)
+	router.GET("/processingstate", routes.MapProcessingStateRoute)
 
 	router.Use(routes.StaticFileServer("/static"))
 

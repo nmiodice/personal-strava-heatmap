@@ -25,16 +25,18 @@ const (
 )
 
 type HttpRoutes struct {
-	IndexRoute       gin.HandlerFunc
-	MapRoute         gin.HandlerFunc
-	TokenExchange    gin.HandlerFunc
-	StaticFileServer func(string) gin.HandlerFunc
+	IndexRoute              gin.HandlerFunc
+	MapRoute                gin.HandlerFunc
+	MapProcessingStateRoute gin.HandlerFunc
+	TokenExchange           gin.HandlerFunc
+	StaticFileServer        func(string) gin.HandlerFunc
 }
 
 func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
 	return &HttpRoutes{
-		TokenExchange: getTokenExchangeRouteFunc(config, deps),
-		MapRoute:      getMapRoute("map.html", config, deps),
+		TokenExchange:           getTokenExchangeRouteFunc(config, deps),
+		MapRoute:                getMapRoute("map.html", config, deps),
+		MapProcessingStateRoute: getMapProcessingStateRoute(config, deps),
 		IndexRoute: templateFileRoute("index.html", gin.H{
 			"title":            "Personalized Strava Heatmap",
 			"strava_client_id": config.Strava.ClientID,
@@ -51,7 +53,38 @@ func templateFileRoute(templateFileName string, params gin.H) gin.HandlerFunc {
 	}
 }
 
-var getMapRoute = func(templateFileName string, config *Config, deps *Dependencies) gin.HandlerFunc {
+func getMapProcessingStateRoute(config *Config, deps *Dependencies) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Query(QueryParamToken)
+		if token == "" {
+			c.JSON(401, gin.H{
+				ResponseError: "Missing Token",
+			})
+			return
+		}
+
+		processingState, err := deps.Map.GetProcessingStateForAthlete(c.Request.Context(), token)
+		if err != nil {
+			c.JSON(500, gin.H{
+				ResponseError: err.Error(),
+			})
+			return
+		}
+
+		// deps.Strava.Athlete
+
+		c.JSON(200, gin.H{
+			"tiles": gin.H{
+				"processing": processingState.Queued,
+				"completed":  processingState.Complete,
+				"failed":     processingState.Failed,
+			},
+		})
+		return
+	}
+}
+
+func getMapRoute(templateFileName string, config *Config, deps *Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Query(QueryParamToken)
 		if token == "" {
@@ -77,7 +110,7 @@ var getMapRoute = func(templateFileName string, config *Config, deps *Dependenci
 	}
 }
 
-var getTokenExchangeRouteFunc = func(config *Config, deps *Dependencies) gin.HandlerFunc {
+func getTokenExchangeRouteFunc(config *Config, deps *Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := deps.Strava.Auth.ExchangeAuthToken(c.Request.Context(), &sdk.TokenExchangeCode{
 			Code: c.Query(QueryParamCode),

@@ -19,7 +19,7 @@ type ProcessorConfiguration struct {
 func runLoop(ctx context.Context, config ProcessorConfiguration) {
 	var theFunc ProcessorFunc = config.Func
 	if config.Lock != nil {
-		theFunc = wrapFuncWithLock(ctx, config.Func, config.Lock)
+		theFunc = wrapFuncWithLock(ctx, config)
 	}
 
 	for {
@@ -32,11 +32,12 @@ func runLoop(ctx context.Context, config ProcessorConfiguration) {
 	}
 }
 
-func wrapFuncWithLock(ctx context.Context, pFunc ProcessorFunc, lock locks.Lock) ProcessorFunc {
+func wrapFuncWithLock(ctx context.Context, config ProcessorConfiguration) ProcessorFunc {
 	return func() error {
-		gotLock, err := lock.WithLock(ctx, pFunc)
-
-		log.Printf("GOT_LOCK: %+v | GOT_ERROR: %+v", gotLock, err)
+		gotLock, err := config.Lock.WithLock(ctx, config.Func)
+		if !gotLock {
+			log.Printf("Job '%s' skipped because lock was not acquired", config.Name)
+		}
 		return err
 	}
 }

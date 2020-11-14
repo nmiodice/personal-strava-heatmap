@@ -60,6 +60,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		stravaService,
 		storageService,
 		queueService,
+		db,
 		config.Map.MinTileZoom,
 		config.Map.MaxTileZoom,
 		config.Queue.BatchSize,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/nmiodice/personal-strava-heatmap/internal/batch"
 	"github.com/nmiodice/personal-strava-heatmap/internal/concurrency"
+	"github.com/nmiodice/personal-strava-heatmap/internal/database"
 	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
@@ -14,26 +15,18 @@ import (
 )
 
 const (
-	TILE_SIZE = float64(256)
+	tileSize = float64(256)
 )
 
 type MapService struct {
 	stravaSvc               *strava.StravaService
 	storageSvc              *storage.AzureBlobstore
 	queueSvc                queue.QueueService
+	db                      *mapDB
 	minTileZoom             int
 	maxTileZoom             int
 	queueBatchSize          int
 	storageConcurrencyLimit int
-}
-
-type mapStruct struct {
-	Type string        `json:"type"`
-	Data []interface{} `json:"data"`
-}
-
-type TileSet struct {
-	tiles types.Set
 }
 
 type MapParam struct {
@@ -43,11 +36,7 @@ type MapParam struct {
 	Tile            Tile      `json:"tile"`
 }
 
-type MapParams []MapParam
-
-func NewTileSet() TileSet {
-	return TileSet{tiles: types.NewSet()}
-}
+type mapParams []MapParam
 
 type Tile struct {
 	X int `json:"x"`
@@ -55,11 +44,15 @@ type Tile struct {
 	Z int `json:"z"`
 }
 
-func (ts TileSet) Add(x, y, z int) {
+type tileSet struct {
+	tiles types.Set
+}
+
+func (ts tileSet) Add(x, y, z int) {
 	ts.tiles.Add(Tile{x, y, z})
 }
 
-func (ts TileSet) Size() int {
+func (ts tileSet) Size() int {
 	return ts.tiles.Size()
 }
 
@@ -67,6 +60,7 @@ func NewMapService(
 	stravaSvc *strava.StravaService,
 	storageSvc *storage.AzureBlobstore,
 	queueSvc queue.QueueService,
+	db *database.DB,
 	minTileZoom int,
 	maxTileZoom int,
 	queueBatchSize int,
@@ -76,6 +70,7 @@ func NewMapService(
 		stravaSvc:               stravaSvc,
 		storageSvc:              storageSvc,
 		queueSvc:                queueSvc,
+		db:                      &mapDB{db},
 		minTileZoom:             minTileZoom,
 		maxTileZoom:             maxTileZoom,
 		queueBatchSize:          queueBatchSize,
@@ -83,39 +78,39 @@ func NewMapService(
 	}
 }
 
-func (ms MapService) AddToTileSet(data []byte, minZoom, maxZoom int, tiles *TileSet) {
+func (ms MapService) AddToTileSet(data []byte, minZoom, maxZoom int, tiles *tileSet) {
 	coords := parseLatLonList(data)
 	for z := minZoom; z <= maxZoom; z++ {
 		scale := float64(int(1) << z)
 		for _, coord := range coords {
 			x, y := project(coord[0], coord[1])
 			tiles.Add(
-				int(x*scale/TILE_SIZE),
-				int(y*scale/TILE_SIZE),
+				int(x*scale/tileSize),
+				int(y*scale/tileSize),
 				z,
 			)
 		}
 	}
 }
 
-func (ms MapService) ComputeMapParams(tiles *TileSet) MapParams {
-	params := MapParams{}
+func (ms MapService) ComputeMapParams(tiles *tileSet) mapParams {
+	params := mapParams{}
 	tileMap := tiles.tiles.ToMap()
 	for k := range tileMap {
-		tile := k.(Tile)
-		fnPostfix := fmt.Sprintf("%d-%d-%d.png", tile.X, tile.Y, tile.Z)
+		t := k.(Tile)
+		fnPostfix := fmt.Sprintf("%d-%d-%d.png", t.X, t.Y, t.Z)
 
 		params = append(params, MapParam{
 			FilenamePostfix: fnPostfix,
 			TopLeft: []float64{
-				tileToLat(tile.Y, tile.Z),
-				tileToLon(tile.X, tile.Z),
+				tileToLat(t.Y, t.Z),
+				tileToLon(t.X, t.Z),
 			},
 			BottomRight: []float64{
-				tileToLat(tile.Y+1, tile.Z),
-				tileToLon(tile.X+1, tile.Z),
+				tileToLat(t.Y+1, t.Z),
+				tileToLon(t.X+1, t.Z),
 			},
-			Tile: tile,
+			Tile: t,
 		})
 	}
 
@@ -139,7 +134,7 @@ func (ms MapService) RebuildMapForAthlete(ctx context.Context, token string) ([]
 	}
 
 	mapSem := concurrency.NewSemaphore(1)
-	tiles := NewTileSet()
+	tiles := tileSet{types.NewSet()}
 
 	funcs := [](func() error){}
 	for _, ref := range dataRefs {
@@ -162,9 +157,9 @@ func (ms MapService) RebuildMapForAthlete(ctx context.Context, token string) ([]
 		return nil, nil, err
 	}
 
-	mapParams := ms.ComputeMapParams(&tiles)
-	messages := make([]interface{}, len(mapParams))
-	for idx, p := range mapParams {
+	params := ms.ComputeMapParams(&tiles)
+	messages := make([]interface{}, len(params))
+	for idx, p := range params {
 		messages[idx] = p
 	}
 
@@ -186,9 +181,20 @@ func (ms MapService) RebuildMapForAthlete(ctx context.Context, token string) ([]
 		}
 	})
 
-	if err = ms.queueSvc.Enqueue(ctx, messageBatches...); err != nil {
+	messageIDs, err := ms.queueSvc.Enqueue(ctx, messageBatches...)
+	if err != nil {
 		return nil, nil, fmt.Errorf("%w: %+v", ErrorInternalError, err)
 	}
 
-	return dataRefs, messageBatches, nil
+	err = ms.db.setProcessingStateForIDs(ctx, mapID, messageIDs)
+	return dataRefs, messageBatches, err
+}
+
+func (ms MapService) GetProcessingStateForAthlete(ctx context.Context, token string) (*ProcessingState, error) {
+	mapID, err := ms.stravaSvc.Athlete.GetOrCreateMapID(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	return ms.db.getProcessingStateForMap(ctx, mapID)
 }

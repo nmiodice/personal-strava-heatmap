@@ -7,11 +7,16 @@ import (
 	"math"
 )
 
+type mapStruct struct {
+	Type string        `json:"type"`
+	Data []interface{} `json:"data"`
+}
+
 func project(lat, lon float64) (float64, float64) {
 	siny := math.Sin(lat * math.Pi / 180.0)
 	siny = math.Min(math.Max(siny, -0.9999), 0.9999)
-	x := TILE_SIZE * (0.5 + lon/360.0)
-	y := TILE_SIZE * (0.5 - math.Log((1+siny)/(1-siny))/(4*math.Pi))
+	x := tileSize * (0.5 + lon/360.0)
+	y := tileSize * (0.5 - math.Log((1+siny)/(1-siny))/(4*math.Pi))
 	return x, y
 }
 
