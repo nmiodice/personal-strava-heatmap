@@ -11,4 +11,6 @@ CREATE TABLE QueueProcessingState (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX message_id_idx ON QueueProcessingState (message_id);
+
 END;

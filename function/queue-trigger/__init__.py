@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import tempfile
-from typing import List
+from typing import List, Optional
 
 import azure.functions as func
 
 from .main import (Args, BoundingBox, DBConfig, ProcessingParam, StorageConfig,
-                   Tile, run)
+                   Tile, run, get_db_conn)
 
 
 def get_params_from_message(message: dict) -> List[ProcessingParam]:
@@ -60,8 +60,28 @@ def get_args(athlete_id: int, params: List[ProcessingParam]) -> Args:
     )
 
 
+def set_message_state(config: DBConfig, id: Optional[str], state: str) -> None:
+    if not id:
+        logging.info('set_message_state called with null ID')
+        return
+    logging.info('updating state of message {0} to {1}'.format(id, state))
+
+    conn = None
+    try:
+        conn = get_db_conn(config)
+        cur = conn.cursor()
+        cur.execute(
+            'UPDATE queueprocessingstate SET pstate = %s where message_id = %s;', (state, id))
+        conn.commit()
+        cur.close()
+    finally:
+        if conn:
+            conn.close()
+
+
 def main(msg: func.QueueMessage):
     logging.info('begin::queue-main')
+    message_id = msg.id
 
     try:
         message = json.loads(msg.get_body().decode('utf-8'))
@@ -72,9 +92,11 @@ def main(msg: func.QueueMessage):
         )
 
         run(args)
+        set_message_state(args.db_config, message_id, 'COMPLETE')
     except Exception as e:
         logging.error('failed::queue-main')
         logging.error(e)
+        set_message_state(args.db_config, message_id, 'FAILED')
         raise e
 
     logging.info('end::queue-main')
