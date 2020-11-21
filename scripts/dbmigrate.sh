@@ -8,4 +8,4 @@ echo "${1:-up}" "${@:2}"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-migrate -database "postgres://${DB_USER}@${DB_HOST}:${ESCAPED_DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${DB_SSLMODE}" -path "$DIR/migrations" "${1:-up}" "${@:2}"
+migrate -database "postgres://${DB_USER}@${DB_HOST}:${ESCAPED_DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${DB_SSLMODE}" -path "$DIR/../api/migrations" "${1:-up}" "${@:2}"

@@ -62,17 +62,12 @@ func triggerBackgroundJobs(ctx context.Context, config *backend.Config, deps *ba
 		deps.Strava,
 		deps.MakeLockFunc(tokenRefreshLockID)))
 
-	// refresh activities for athletes
-	processor.RunForever(ctx, athlete.AthleteActivityListRefreshConfig(
-		ctx,
-		deps.Strava,
-		deps.MakeLockFunc(activityListRefreshLockID)))
-
-	// sync missing ride data for athletes
-	processor.RunForever(ctx, athlete.AthleteActivityStreamRefreshConfig(
+	// sync missing ride data + map generation for athletes
+	processor.RunForever(ctx, athlete.AthleteUpdateConfig(
 		ctx,
 		deps.Strava,
 		deps.Map,
+		deps.State,
 		deps.MakeLockFunc(activityDownloadLockID)))
 }
 

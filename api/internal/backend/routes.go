@@ -3,12 +3,12 @@ package backend
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/nmiodice/personal-strava-heatmap/internal/orchestrator"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
 )
 
@@ -63,7 +63,8 @@ func getMapProcessingStateRoute(config *Config, deps *Dependencies) gin.HandlerF
 			return
 		}
 
-		processingState, err := deps.Map.GetProcessingStateForAthlete(c.Request.Context(), token)
+		ctx := c.Request.Context()
+		mapProcessingState, err := deps.Map.GetProcessingStateForAthlete(ctx, token)
 		if err != nil {
 			c.JSON(500, gin.H{
 				ResponseError: err.Error(),
@@ -71,13 +72,30 @@ func getMapProcessingStateRoute(config *Config, deps *Dependencies) gin.HandlerF
 			return
 		}
 
-		// deps.Strava.Athlete
+		athleteID, err := deps.Strava.Athlete.GetAthleteForAuthToken(ctx, token)
+		if err != nil {
+			c.JSON(401, gin.H{
+				ResponseError: err.Error(),
+			})
+			return
+		}
+
+		state, err := deps.State.GetState(ctx, athleteID)
+		if err != nil {
+			c.JSON(500, gin.H{
+				ResponseError: err.Error(),
+			})
+			return
+		}
 
 		c.JSON(200, gin.H{
-			"tiles": gin.H{
-				"processing": processingState.Queued,
-				"completed":  processingState.Complete,
-				"failed":     processingState.Failed,
+			"athlete_state": gin.H{
+				"state": state,
+			},
+			"map_state": gin.H{
+				"processing": mapProcessingState.Queued,
+				"completed":  mapProcessingState.Complete,
+				"failed":     mapProcessingState.Failed,
 			},
 		})
 		return
@@ -129,29 +147,13 @@ func getTokenExchangeRouteFunc(config *Config, deps *Dependencies) gin.HandlerFu
 
 		// kick off background job to update profile and rebuild map
 		go func() {
-			bgCtx := context.Background()
-
-			log.Printf("importing new activities for athlete '%d'", res.Athlete)
-			_, err := deps.Strava.Athlete.ImportNewActivities(bgCtx, res.AccessToken)
-			if err != nil {
-				log.Printf("error encountered importing new activities for athlete '%d': %+v", res.Athlete, err)
-			}
-
-			log.Printf("importing new activity streams for athlete '%d'", res.Athlete)
-			imported, err := deps.Strava.Athlete.ImportMissingActivityStreams(bgCtx, res.AccessToken)
-			if err != nil {
-				log.Printf("error encountered importing new activity streams for athlete '%d': %+v", res.Athlete, err)
-			}
-
-			if imported > 0 {
-				log.Printf("rebuilding map for athlete '%d'", res.Athlete)
-				dataRefs, messageBatches, err := deps.Map.RebuildMapForAthlete(bgCtx, res.AccessToken)
-				if err != nil {
-					log.Printf("error encountered rebuilding map for athlete '%d': %+v", res.Athlete, err)
-					return
-				}
-				log.Printf("rebuilt map using '%d' data refs and '%d' queued messages for athlete '%d'", len(dataRefs), len(messageBatches), res.Athlete)
-			}
+			orchestrator.UpdateAthleteMap(
+				deps.Strava,
+				deps.Map,
+				deps.State,
+				res.Athlete,
+				res.AccessToken,
+				context.Background())
 		}()
 	}
 }

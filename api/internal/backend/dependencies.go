@@ -7,6 +7,7 @@ import (
 	"github.com/nmiodice/personal-strava-heatmap/internal/locks"
 	"github.com/nmiodice/personal-strava-heatmap/internal/maps"
 	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
+	"github.com/nmiodice/personal-strava-heatmap/internal/state"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
@@ -16,6 +17,7 @@ type Dependencies struct {
 	MakeLockFunc func(int) locks.Lock
 	Strava       *strava.StravaService
 	Map          *maps.MapService
+	State        state.StateService
 }
 
 func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error) {
@@ -73,6 +75,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		},
 		Strava: stravaService,
 		Map:    mapSvc,
+		State:  state.NewStateService(db),
 	}
 
 	return deps, nil
