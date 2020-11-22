@@ -52,7 +52,7 @@ func (mdb mapDB) getProcessingStateForMap(ctx context.Context, mapID string) (*P
 
 	err := mdb.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
 		row := tx.QueryRow(ctx, getProcessingStateForMapSQL, mapID)
-		if err := row.Scan(&pstate.Queued, &pstate.Failed, &pstate.Complete); err != nil {
+		if err := row.Scan(&pstate.Queued, &pstate.Failed, &pstate.Complete); err != nil && err != pgx.ErrNoRows {
 			return fmt.Errorf("fetching processing states form ap: %w", err)
 		}
 		return nil
