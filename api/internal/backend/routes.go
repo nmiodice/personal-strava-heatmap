@@ -22,6 +22,7 @@ const (
 	ResponseActivitiesIncluded = "activities"
 	ResponseActivitiesCount    = "activity_count"
 	ResponseTileBatchCount     = "tile_batch_count"
+	WebsiteName                = "Personal Heatmap"
 )
 
 type HttpRoutes struct {
@@ -38,7 +39,7 @@ func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
 		MapRoute:                getMapRoute("map.html", config, deps),
 		MapProcessingStateRoute: getMapProcessingStateRoute(config, deps),
 		IndexRoute: templateFileRoute("index.html", gin.H{
-			"title":            "Personalized Strava Heatmap",
+			"title":            WebsiteName,
 			"strava_client_id": config.Strava.ClientID,
 		}),
 		StaticFileServer: func(urlPrefix string) gin.HandlerFunc {
@@ -121,6 +122,7 @@ func getMapRoute(templateFileName string, config *Config, deps *Dependencies) gi
 		}
 
 		c.HTML(http.StatusOK, templateFileName, gin.H{
+			"title":         WebsiteName,
 			"map_id":        mapID,
 			"map_api_key":   config.Map.MapsAPIKey,
 			"tile_endpoint": fmt.Sprintf("https://%s.blob.core.windows.net/%s/", config.Storage.AccountName, config.Storage.UploadContainerName),

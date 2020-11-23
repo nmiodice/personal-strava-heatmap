@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Personalized Strava Heatmap</title>
+  <title>{{ .title }}</title>
   <style>
     /* Always set the map height explicitly to define the size of the div
         * element that contains the map. */
@@ -33,12 +33,20 @@
       cursor: pointer;
     }
 
+
     #status {
-      position: absolute;
       left: 20px;
       top: 20px;
-      z-index: 1;
+    }
 
+    #athlete-data {
+      right: 80px;
+      top: 20px;
+    }
+
+    .info-box {
+      position: absolute;
+      z-index: 1;
       padding: 10px;
 
 
@@ -53,7 +61,7 @@
     }
 
 
-    #status > * {
+    .info-box > * {
       display: inline-block;
       text-align: center;
       vertical-align: middle;
@@ -79,9 +87,14 @@
   <button id="location_button">
     <img src="/static/icons/location.svg" height="10px">
   </button>
-  <div id="status">
-    <img id="status_icon" width="16px" src="/static/icons/refresh_black_48dp.png"></img>
-    <div id="status_text">Loading Map Status</div>      
+  <div>
+    <div id="status" class="info-box">
+      <img id="status_icon" width="16px" src="/static/icons/refresh_black_48dp.png"></img>
+      <div id="status_text">Loading Map Status</div>      
+    </div>
+    <div id="athlete-data" class="info-box">
+      <div id="status_text">Data pulled from your <a href="https://www.strava.com/dashboard" style="color:#FC4C02;">Strava Profile</a></div>      
+    </div>
   </div>
   <div id="map"></div>
 </body>
