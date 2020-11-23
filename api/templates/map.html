@@ -33,19 +33,32 @@
       cursor: pointer;
     }
 
-    #athlete_status {
+    #status {
       position: absolute;
       left: 20px;
       top: 20px;
       z-index: 1;
-      min-height: 40px;
-      max-height: 80px;
+
+      padding: 10px;
+
+
+      user-select: none;
+        -moz-user-select: none;
+        -khtml-user-select: none;
+        -webkit-user-select: none;
+        -o-user-select: none;
 
       background-color: rgb(227, 227, 227);
       border-radius: 3px;
-      width: 500px;
+    }
 
-      padding: 0 auto;
+
+    #status > * {
+      display: inline-block;
+      text-align: center;
+      vertical-align: middle;
+      margin: auto;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
   </style>
@@ -64,9 +77,12 @@
   <input type="hidden" id="map_id" name="map_id" value="{{ .map_id }}">
   <input type="hidden" id="tile_endpoint" name="tile_endpoint" value="{{ .tile_endpoint }}">
   <button id="location_button">
-    <img src="static/icons/location.svg" height="10px">
+    <img src="/static/icons/location.svg" height="10px">
   </button>
-  <div id="athlete_status"></div>
+  <div id="status">
+    <img id="status_icon" width="16px" src="/static/icons/refresh_black_48dp.png"></img>
+    <div id="status_text">Loading Map Status</div>      
+  </div>
   <div id="map"></div>
 </body>
 

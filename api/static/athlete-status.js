@@ -37,15 +37,18 @@ function getStateHandlerFunc(athlete_state) {
 }
 
 function handleImportingActivitiesState(athlete_state, map_state) {
-    $('#athlete_status').html('Looking for new activities on Strava...')
+    $('#status_icon').attr('src', '/static/icons/queue_black_48dp.png')
+    $('#status_text').html('Importing activities...')
 }
 
 function handleDownloadingActivitiesState(athlete_state, map_state) {
-    $('#athlete_status').html('Downloading new activities from Strava...')
+    $('#status_icon').attr('src', '/static/icons/cloud_download_black_48dp.png')
+    $('#status_text').html('Downloading activities...')
 }
 
 function handleComputingMapParamsState(athlete_state, map_state) {
-    $('#athlete_status').html('Regenerating map metadata. This may take 1-2 minutes...')
+    $('#status_icon').attr('src', '/static/icons/speed_black_48dp.png')
+    $('#status_text').html('Computing map parameters...')
 }
 
 function handleProcessingMapState(athlete_state, map_state) {
@@ -60,11 +63,13 @@ function handleProcessingMapState(athlete_state, map_state) {
     }
 
     if (completePercent == 100) {
-        $('#athlete_status').html('Map is fully up to date')
+        $('#status_icon').attr('src', '/static/icons/verified_black_48dp.png')
+        $('#status_text').html('Up to date!')
         return
     }
 
-    $('#athlete_status').html('Map is rebuilding. ' + completePercent + '% complete, ' + failedPercent + '% failed. This may be slow at first, but should speed up. Move map around or refresh to see updates.')
+    $('#status_icon').attr('src', '/static/icons/speed_black_48dp.png')
+    $('#status_text').html('Rebuilding - ' + completePercent + '% complete. May be slow at first but will speed up. Move around or refresh to see updates.')
 }
 
 function handleAllOtherStates(athlete_state, map_state) {
