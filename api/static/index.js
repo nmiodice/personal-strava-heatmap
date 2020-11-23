@@ -1,6 +1,8 @@
 $( document ).ready(function() {
     console.log('index loaded')
     console.log('login callback url: ', loginCallbackURL())
+    $("#login").click(stravaLogin);
+    console.log('onclick registered')
 });
 
 function loginCallbackURL() {
@@ -15,5 +17,3 @@ function stravaLogin() {
         "&response_type=" + encodeURIComponent('code') +
         "&approval_prompt=" + encodeURIComponent('auto')
 }
-
-$("#login").click(stravaLogin);

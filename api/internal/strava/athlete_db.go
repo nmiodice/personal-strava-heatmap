@@ -130,23 +130,6 @@ func (ad athleteDB) GetOrCreateMapID(ctx context.Context, athleteID int) (string
 	return mapID, err
 }
 
-// TODO: add errored!!!
-func (ad athleteDB) GetActivitySyncSummary(ctx context.Context, athleteID int) (*ActivitySyncSummary, error) {
-	var summary ActivitySyncSummary
-	err := ad.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
-		row := tx.QueryRow(ctx, insertOrGetMapIDSQL, athleteID)
-
-		if err := row.Scan(&summary.Sunc, &summary.NotSunc); err != nil {
-			return fmt.Errorf("fetching activity sync summary: %w", err)
-		}
-
-		return nil
-	})
-
-	summary.Total = summary.Sunc + summary.NotSunc + summary.Errored
-	return &summary, err
-}
-
 // substitution is a series of escaped SQL values blocks
 var insertActivitiesSQL = `
 INSERT INTO
