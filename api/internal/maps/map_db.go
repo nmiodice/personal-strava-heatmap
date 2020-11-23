@@ -78,7 +78,7 @@ SELECT
 FROM
 	QueueProcessingState
 WHERE
-	created_at=(SELECT MAX(created_at) FROM QueueProcessingState)
+	created_at=(SELECT MAX(created_at) FROM QueueProcessingState WHERE map_id = $1)
     AND
     map_id = $1
 GROUP BY
