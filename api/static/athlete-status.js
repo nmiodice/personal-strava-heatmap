@@ -1,5 +1,5 @@
 $( document ).ready(function() {
-    window.refreshTimer = setInterval(refreshStatus, 5000)
+    window.refreshTimer = setInterval(refreshStatus, 2500)
     refreshStatus()
 });
 
