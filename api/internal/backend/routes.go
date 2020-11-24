@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -56,11 +55,9 @@ func templateFileRoute(templateFileName string, params gin.H) gin.HandlerFunc {
 
 func getMapProcessingStateRoute(config *Config, deps *Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.Query(QueryParamToken)
-		if token == "" {
-			c.JSON(401, gin.H{
-				ResponseError: "Missing Token",
-			})
+		token, err := c.Cookie("token")
+		if err != nil || token == "" {
+			c.Redirect(301, "/")
 			return
 		}
 
@@ -105,11 +102,9 @@ func getMapProcessingStateRoute(config *Config, deps *Dependencies) gin.HandlerF
 
 func getMapRoute(templateFileName string, config *Config, deps *Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.Query(QueryParamToken)
-		if token == "" {
-			c.JSON(401, gin.H{
-				ResponseError: "Missing Token",
-			})
+		token, err := c.Cookie("token")
+		if err != nil || token == "" {
+			c.Redirect(301, "/")
 			return
 		}
 
@@ -143,9 +138,8 @@ func getTokenExchangeRouteFunc(config *Config, deps *Dependencies) gin.HandlerFu
 			return
 		}
 
-		params := url.Values{}
-		params.Add(QueryParamToken, res.AccessToken)
-		c.Redirect(301, fmt.Sprintf("/map.html/?%s", params.Encode()))
+		c.SetCookie("token", res.AccessToken, 0, "", "", false, true)
+		c.Redirect(301, "/map.html/")
 
 		// kick off background job to update profile and rebuild map
 		go func() {

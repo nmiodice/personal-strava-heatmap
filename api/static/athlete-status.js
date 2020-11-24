@@ -6,6 +6,7 @@ $( document ).ready(function() {
 
 
 function refreshStatus() {
+    // token = localStorage.getItem('api-token')
     params = new URLSearchParams(window.location.search);
     token = params.get('token')
     
