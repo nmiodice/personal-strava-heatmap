@@ -150,16 +150,19 @@ def get_args() -> Args:
     )
 
 
+def get_db_conn(config: DBConfig) -> Any:
+    return psycopg2.connect(
+        host=config.host,
+        database=config.name,
+        user=config.user + "@" + config.host,
+        password=config.password)
+
+
 def get_activity_refs(athlete_id: int, config: DBConfig) -> List[ActivityRef]:
     refs = []
     conn = None
     try:
-        conn = psycopg2.connect(
-            host=config.host,
-            database=config.name,
-            user=config.user + "@" + config.host,
-            password=config.password)
-
+        conn = get_db_conn(config)
         cur = conn.cursor()
         cur.execute(
             'SELECT activity_data_ref FROM stravaactivity WHERE athlete_id = %s AND activity_data_ref IS NOT NULL', (athlete_id,))
@@ -361,7 +364,7 @@ def process_coordinate_summary(
 def parse_activity_coordinates(docs: List[JsonDict]) -> np.ndarray:
     # filter out documents with errors
     docsWithCoords = [d for d in docs if 'errors' not in d]
-    logging.warning('filtered {0} of {1} docs'.format(
+    logging.info('filtered {0} of {1} docs'.format(
         len(docs) - len(docsWithCoords), len(docs)))
 
     # convert coordinates for all documents

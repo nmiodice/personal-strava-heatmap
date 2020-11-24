@@ -22,6 +22,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nmiodice/personal-strava-heatmap/internal/backend"
+	"github.com/nmiodice/personal-strava-heatmap/internal/background/athlete"
+	"github.com/nmiodice/personal-strava-heatmap/internal/background/processor"
+)
+
+const (
+	tokenRefreshLockID        = 1
+	activityListRefreshLockID = 2
+	activityDownloadLockID    = 3
 )
 
 func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.Engine {
@@ -33,14 +41,34 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/index.html", routes.IndexRoute)
 	router.GET("/map.html", routes.MapRoute)
 	router.GET("/tokenexchange", routes.TokenExchange)
-	router.GET("/profile", routes.ProfileRoute)
-	router.GET("/unprocessedactivities", routes.UnprocessedActivitiesRoute)
-	router.GET("/syncactivities", routes.SyncActivitiesRoute)
-	router.GET("/buildmap", routes.BuildMapRoute)
+	router.GET("/processingstate", routes.MapProcessingStateRoute)
 
 	router.Use(routes.StaticFileServer("/static"))
 
 	return router
+}
+
+func runHTTPServerForever(config *backend.Config, deps *backend.Dependencies) {
+	routes := backend.GetRoutes(config, deps)
+	router := configureRouter(config, routes)
+
+	router.Run(fmt.Sprintf(":%d", config.HttpServer.Port))
+}
+
+func triggerBackgroundJobs(ctx context.Context, config *backend.Config, deps *backend.Dependencies) {
+	// refresh access tokens
+	processor.RunForever(ctx, athlete.AthleteTokenRefreshConfig(
+		ctx,
+		deps.Strava,
+		deps.MakeLockFunc(tokenRefreshLockID)))
+
+	// sync missing ride data + map generation for athletes
+	processor.RunForever(ctx, athlete.AthleteUpdateConfig(
+		ctx,
+		deps.Strava,
+		deps.Map,
+		deps.State,
+		deps.MakeLockFunc(activityDownloadLockID)))
 }
 
 func main() {
@@ -51,8 +79,6 @@ func main() {
 		log.Fatalf("Error configuring application dependencies: %+v", err)
 	}
 
-	routes := backend.GetRoutes(config, deps)
-	router := configureRouter(config, routes)
-
-	router.Run(fmt.Sprintf(":%d", config.HttpServer.Port))
+	triggerBackgroundJobs(ctx, config, deps)
+	runHTTPServerForever(config, deps)
 }

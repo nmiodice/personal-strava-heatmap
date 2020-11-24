@@ -9,7 +9,9 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-resty/resty/v2 v2.3.0
 	github.com/hashicorp/go-multierror v1.1.0
+	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v4 v4.9.2
 	github.com/sethvargo/go-envconfig v0.3.2
 	gopkg.in/resty.v1 v1.12.0
+	honnef.co/go/tools v0.0.1-2019.2.3
 )

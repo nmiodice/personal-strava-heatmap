@@ -2,28 +2,22 @@ package backend
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"time"
-
-	resty "github.com/go-resty/resty/v2"
 
 	"github.com/nmiodice/personal-strava-heatmap/internal/database"
+	"github.com/nmiodice/personal-strava-heatmap/internal/locks"
 	"github.com/nmiodice/personal-strava-heatmap/internal/maps"
 	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
+	"github.com/nmiodice/personal-strava-heatmap/internal/state"
 	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
 	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
+	"github.com/nmiodice/personal-strava-heatmap/internal/strava/sdk"
 )
 
 type Dependencies struct {
-	HttpClient *resty.Client
-	DB         *database.DB
-	Strava     *strava.StravaService
-	Map        *maps.MapService
-	Storage    *storage.AzureBlobstore
-	Queue      queue.QueueService
+	MakeLockFunc func(int) locks.Lock
+	Strava       *strava.StravaService
+	Map          *maps.MapService
+	State        state.StateService
 }
 
 func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error) {
@@ -32,7 +26,7 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		return nil, err
 	}
 
-	storageClient, err := storage.NewAzureBlobstore(
+	storageService, err := storage.NewAzureBlobstore(
 		ctx,
 		config.Storage.ContainerName,
 		config.Storage.AccountName,
@@ -41,43 +35,16 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		return nil, err
 	}
 
-	http := &http.Client{Timeout: config.HttpClient.Timeout}
-	restyClient := resty.
-		NewWithClient(http).
-		SetRetryCount(5).
-		SetRetryWaitTime(500 * time.Millisecond).
-		AddRetryCondition(func(r *resty.Response, e error) bool {
-			if e != nil {
-				return true
-			}
-
-			response := map[string]interface{}{}
-			json.Unmarshal(r.Body(), &response)
-			for _, key := range []string{"error", "Error", "errors", "Errors"} {
-				if val, ok := response[key]; ok {
-					log.Printf("Detected error in API response. Will retry: %+v", val)
-					return true
-				}
-			}
-			return false
-		}).
-		OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
-			if r.StatusCode() >= 300 {
-				log.Printf("Converting HTTP %d to error response", r.StatusCode())
-				return fmt.Errorf("HTTP %s", r.Status())
-			}
-			return nil
-		})
-
-	athleteSvc := strava.NewAthleteService(restyClient, db, config.Strava.ConcurrencyLimit, storageClient)
+	stravaSDK := sdk.NewStravaSDK(sdk.StravaSDKConfig{
+		Timeout:      config.HttpClient.Timeout,
+		ClientID:     config.Strava.ClientID,
+		ClientSecret: config.Strava.ClientSecret,
+		DB:           db,
+	})
+	athleteSvc := strava.NewAthleteService(stravaSDK, db, config.Strava.ConcurrencyLimit, storageService)
 
 	stravaService := &strava.StravaService{
-		Auth: strava.NewOAuthService(
-			restyClient,
-			db,
-			config.Strava.ClientID,
-			config.Strava.ClientSecret,
-		),
+		Auth:    strava.NewOAuthService(stravaSDK, db),
 		Athlete: athleteSvc,
 	}
 
@@ -91,13 +58,24 @@ func GetDependencies(ctx context.Context, config *Config) (*Dependencies, error)
 		return nil, err
 	}
 
+	mapSvc := maps.NewMapService(
+		stravaService,
+		storageService,
+		queueService,
+		db,
+		config.Map.MinTileZoom,
+		config.Map.MaxTileZoom,
+		config.Queue.BatchSize,
+		config.Storage.ConcurrencyLimit,
+	)
+
 	deps := &Dependencies{
-		DB:         db,
-		HttpClient: restyClient,
-		Strava:     stravaService,
-		Map:        maps.NewMapService(),
-		Storage:    storageClient,
-		Queue:      queueService,
+		MakeLockFunc: func(id int) locks.Lock {
+			return locks.NewDistributedLock(db, id)
+		},
+		Strava: stravaService,
+		Map:    mapSvc,
+		State:  state.NewStateService(db),
 	}
 
 	return deps, nil

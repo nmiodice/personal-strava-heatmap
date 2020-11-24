@@ -1,137 +1,32 @@
 package maps
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
-	"math"
 
+	"github.com/nmiodice/personal-strava-heatmap/internal/batch"
+	"github.com/nmiodice/personal-strava-heatmap/internal/concurrency"
+	"github.com/nmiodice/personal-strava-heatmap/internal/database"
+	"github.com/nmiodice/personal-strava-heatmap/internal/queue"
+	"github.com/nmiodice/personal-strava-heatmap/internal/storage"
+	"github.com/nmiodice/personal-strava-heatmap/internal/strava"
 	"github.com/nmiodice/personal-strava-heatmap/internal/types"
 )
 
 const (
-	TILE_SIZE = float64(256)
+	tileSize = float64(256)
 )
 
 type MapService struct {
-}
-
-type mapStruct struct {
-	Type string        `json:"type"`
-	Data []interface{} `json:"data"`
-}
-
-type TileSet struct {
-	tiles types.Set
-}
-
-func NewTileSet() TileSet {
-	return TileSet{tiles: types.NewSet()}
-}
-
-type Tile struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-	Z int `json:"z"`
-}
-
-func (ts TileSet) Add(x, y, z int) {
-	ts.tiles.Add(Tile{x, y, z})
-}
-
-func (ts TileSet) Size() int {
-	return ts.tiles.Size()
-}
-
-func NewMapService() *MapService {
-	return &MapService{}
-}
-
-func (ms MapService) AddToTileSet(data []byte, minZoom, maxZoom int, tiles *TileSet) {
-	coords := parseLatLonList(data)
-	addTiles(coords, minZoom, maxZoom, tiles)
-}
-
-func addTiles(coords [][]float64, minZoom, maxZoom int, tiles *TileSet) {
-	for z := minZoom; z <= maxZoom; z++ {
-		scale := float64(int(1) << z)
-		for _, coord := range coords {
-			x, y := project(coord[0], coord[1])
-			tiles.Add(
-				int(x*scale/TILE_SIZE),
-				int(y*scale/TILE_SIZE),
-				z,
-			)
-		}
-	}
-}
-
-func project(lat, lon float64) (float64, float64) {
-	siny := math.Sin(lat * math.Pi / 180.0)
-	siny = math.Min(math.Max(siny, -0.9999), 0.9999)
-	x := TILE_SIZE * (0.5 + lon/360.0)
-	y := TILE_SIZE * (0.5 - math.Log((1+siny)/(1-siny))/(4*math.Pi))
-	return x, y
-}
-
-func parseLatLonList(data []byte) [][]float64 {
-	results := [][]float64{}
-
-	dec := json.NewDecoder(bytes.NewReader(data))
-
-	// read open bracket
-	dec.Token()
-
-	// while the array contains values
-	for dec.More() {
-		var res mapStruct
-		// decode an array value
-		err := dec.Decode(&res)
-
-		// skip non-conforming documents
-		if err != nil {
-			dec.Token()
-			continue
-		}
-
-		// parse lat/lons
-		switch res.Type {
-		case "latlng":
-			for _, dataElem := range res.Data {
-				lat, lon, err := parseLatLon(dataElem)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-
-				results = append(results, []float64{lat, lon})
-			}
-		}
-	}
-
-	return results
-}
-
-func parseLatLon(dataElem interface{}) (float64, float64, error) {
-	asList, ok := dataElem.([]interface{})
-	if !ok {
-		return 0, 0, fmt.Errorf("unexpectedly did not find lat/lon list: %+v", dataElem)
-	}
-
-	if len(asList) != 2 {
-		return 0, 0, fmt.Errorf("unexpectedly did not find correct number of lat/lon: %+v", asList)
-	}
-
-	lat, ok := asList[0].(float64)
-	if !ok {
-		return 0, 0, fmt.Errorf("lat was unexpectly not a float: %+v", asList[0])
-	}
-	lon, ok := asList[1].(float64)
-	if !ok {
-		return 0, 0, fmt.Errorf("lon was unexpectly not a float: %+v", asList[0])
-	}
-
-	return lat, lon, nil
+	stravaSvc               *strava.StravaService
+	storageSvc              *storage.AzureBlobstore
+	queueSvc                queue.QueueService
+	db                      *mapDB
+	minTileZoom             int
+	maxTileZoom             int
+	queueBatchSize          int
+	storageConcurrencyLimit int
 }
 
 type MapParam struct {
@@ -141,39 +36,165 @@ type MapParam struct {
 	Tile            Tile      `json:"tile"`
 }
 
-type MapParams []MapParam
+type mapParams []MapParam
 
-func (ms MapService) ComputeMapParams(tiles *TileSet) MapParams {
-	params := MapParams{}
+type Tile struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+	Z int `json:"z"`
+}
+
+type tileSet struct {
+	tiles types.Set
+}
+
+func (ts tileSet) Add(x, y, z int) {
+	ts.tiles.Add(Tile{x, y, z})
+}
+
+func (ts tileSet) Size() int {
+	return ts.tiles.Size()
+}
+
+func NewMapService(
+	stravaSvc *strava.StravaService,
+	storageSvc *storage.AzureBlobstore,
+	queueSvc queue.QueueService,
+	db *database.DB,
+	minTileZoom int,
+	maxTileZoom int,
+	queueBatchSize int,
+	storageConcurrencyLimit int,
+) *MapService {
+	return &MapService{
+		stravaSvc:               stravaSvc,
+		storageSvc:              storageSvc,
+		queueSvc:                queueSvc,
+		db:                      &mapDB{db},
+		minTileZoom:             minTileZoom,
+		maxTileZoom:             maxTileZoom,
+		queueBatchSize:          queueBatchSize,
+		storageConcurrencyLimit: storageConcurrencyLimit,
+	}
+}
+
+func (ms MapService) AddToTileSet(data []byte, minZoom, maxZoom int, tiles *tileSet) {
+	coords := parseLatLonList(data)
+	for z := minZoom; z <= maxZoom; z++ {
+		scale := float64(int(1) << z)
+		for _, coord := range coords {
+			x, y := project(coord[0], coord[1])
+			tiles.Add(
+				int(x*scale/tileSize),
+				int(y*scale/tileSize),
+				z,
+			)
+		}
+	}
+}
+
+func (ms MapService) ComputeMapParams(tiles *tileSet) mapParams {
+	params := mapParams{}
 	tileMap := tiles.tiles.ToMap()
 	for k := range tileMap {
-		tile := k.(Tile)
-		fnPostfix := fmt.Sprintf("%d-%d-%d.png", tile.X, tile.Y, tile.Z)
+		t := k.(Tile)
+		fnPostfix := fmt.Sprintf("%d-%d-%d.png", t.X, t.Y, t.Z)
 
 		params = append(params, MapParam{
 			FilenamePostfix: fnPostfix,
 			TopLeft: []float64{
-				tileToLat(tile.Y, tile.Z),
-				tileToLon(tile.X, tile.Z),
+				tileToLat(t.Y, t.Z),
+				tileToLon(t.X, t.Z),
 			},
 			BottomRight: []float64{
-				tileToLat(tile.Y+1, tile.Z),
-				tileToLon(tile.X+1, tile.Z),
+				tileToLat(t.Y+1, t.Z),
+				tileToLon(t.X+1, t.Z),
 			},
-			Tile: tile,
+			Tile: t,
 		})
 	}
 
 	return params
 }
 
-// https://gis.stackexchange.com/questions/17278/calculate-lat-lon-bounds-for-individual-tile-generated-from-gdal2tiles
-func tileToLat(y, z int) float64 {
-	n := math.Pi - 2*math.Pi*float64(y)/math.Pow(2, float64(z))
-	return (180 / math.Pi * math.Atan(0.5*(math.Exp(n)-math.Exp(-n))))
+var (
+	ErrorMissingToken  = errors.New("missing authentication token in reuqest")
+	ErrorStravaAPI     = errors.New("encountered issue with Strava API")
+	ErrorInternalError = errors.New("encountered issue with backend subsystem")
+)
+
+func (ms MapService) RebuildMapForAthlete(ctx context.Context, token string) ([]string, []interface{}, error) {
+	if token == "" {
+		return nil, nil, ErrorMissingToken
+	}
+
+	dataRefs, err := ms.stravaSvc.Athlete.GetActivityDataRefs(ctx, token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
+	}
+
+	mapSem := concurrency.NewSemaphore(1)
+	tiles := tileSet{types.NewSet()}
+
+	funcs := [](func() error){}
+	for _, ref := range dataRefs {
+		theRef := ref
+		funcs = append(funcs, func() error {
+			bytes, err := ms.storageSvc.GetObjectBytes(ctx, theRef)
+			if err != nil {
+				return fmt.Errorf("%w: %+v", ErrorInternalError, err)
+			}
+
+			mapSem.Acquire(1)
+			defer mapSem.Release(1)
+
+			ms.AddToTileSet(bytes, ms.minTileZoom, ms.maxTileZoom, &tiles)
+			return nil
+		})
+	}
+
+	if err = concurrency.NewSemaphore(ms.storageConcurrencyLimit).WithRateLimit(funcs, true); err != nil {
+		return nil, nil, err
+	}
+
+	params := ms.ComputeMapParams(&tiles)
+	messages := make([]interface{}, len(params))
+	for idx, p := range params {
+		messages[idx] = p
+	}
+
+	athleteID, err := ms.stravaSvc.Athlete.GetAthleteForAuthToken(ctx, token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
+	}
+
+	mapID, err := ms.stravaSvc.Athlete.GetOrCreateMapID(ctx, token)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorStravaAPI, err)
+	}
+
+	messageBatches := batch.ToBatchesWithTransformer(messages, ms.queueBatchSize, func(batch []interface{}) interface{} {
+		return map[string]interface{}{
+			"coords":     batch,
+			"athlete_id": athleteID,
+			"map_id":     mapID,
+		}
+	})
+
+	messageIDs, err := ms.queueSvc.Enqueue(ctx, messageBatches...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %+v", ErrorInternalError, err)
+	}
+
+	err = ms.db.setProcessingStateForIDs(ctx, mapID, messageIDs)
+	return dataRefs, messageBatches, err
 }
 
-// https://gis.stackexchange.com/questions/17278/calculate-lat-lon-bounds-for-individual-tile-generated-from-gdal2tiles
-func tileToLon(x, z int) float64 {
-	return (float64(x)/math.Pow(2, float64(z))*360 - 180)
+func (ms MapService) GetProcessingStateForAthlete(ctx context.Context, token string) (*ProcessingState, error) {
+	mapID, err := ms.stravaSvc.Athlete.GetOrCreateMapID(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	return ms.db.getProcessingStateForMap(ctx, mapID)
 }

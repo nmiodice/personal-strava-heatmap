@@ -14,13 +14,13 @@ type HttpServerConfig struct {
 }
 
 type HttpClientConfig struct {
-	Timeout time.Duration `env:"HTTP_CLIENT_TIMEOUT_SECONDS,default=5s"`
+	Timeout time.Duration `env:"HTTP_CLIENT_TIMEOUT_SECONDS,default=10s"`
 }
 
 type StravaAppConfig struct {
 	ClientID         string `env:"STRAVA_CLIENT_ID,required"`
 	ClientSecret     string `env:"STRAVA_CLIENT_SECRET,required"`
-	ConcurrencyLimit int    `env:"STRAVA_MAX_DOWNLOAD_WORKERS,default=1"`
+	ConcurrencyLimit int    `env:"STRAVA_MAX_DOWNLOAD_WORKERS,default=4"`
 }
 
 type DatabaseConfig struct {

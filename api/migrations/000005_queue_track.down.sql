@@ -1,0 +1,9 @@
+BEGIN;
+
+DROP TABLE
+  QueueProcessingState
+;
+
+DROP TYPE IF EXISTS PSTATE;
+
+END;
