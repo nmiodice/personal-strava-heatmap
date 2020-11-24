@@ -351,7 +351,7 @@ def process_coordinate_summary(
         x_min = max(point[0] - 1, 0)
         x_max = min(point[0] + 1, tile_size_px)
 
-        imageMap[y_min:y_max, x_min:x_max] = [255, 0, 0, 255]
+        imageMap[y_min:y_max, x_min:x_max] = [252, 76, 2, 255] # #FC4C02, aka "strava orange"
 
     blurredImageMap = gaussian_filter(imageMap, sigma=(.8, .8, .8))
     maxPxVal = np.max(blurredImageMap)
