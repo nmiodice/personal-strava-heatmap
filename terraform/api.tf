@@ -7,8 +7,8 @@ resource "azurerm_app_service_plan" "api-asp" {
   reserved            = true
 
   sku {
-    tier = "PremiumV2"
-    size = "P1v2"
+    tier = "Basic"
+    size = "B1"
   }
 }
 
@@ -35,7 +35,7 @@ resource "azurerm_app_service" "api" {
   app_settings = {
     PORT : 8080
     APPINSIGHTS_INSTRUMENTATIONKEY : azurerm_application_insights.ai.instrumentation_key
-    WEBSITES_ENABLE_APP_SERVICE_STORAGE : true
+    WEBSITES_ENABLE_APP_SERVICE_STORAGE : false
     HTTP_CLIENT_TIMEOUT_SECONDS : "5s"
 
     STRAVA_CLIENT_ID : var.strava_client_id
@@ -88,6 +88,14 @@ resource "azurerm_monitor_diagnostic_setting" "api-log-settings" {
 
   log {
     category = "AppServiceConsoleLogs"
+    retention_policy {
+      enabled = true
+      days    = 180
+    }
+  }
+
+  log {
+    category = "AppServiceAppLogs"
     retention_policy {
       enabled = true
       days    = 180
