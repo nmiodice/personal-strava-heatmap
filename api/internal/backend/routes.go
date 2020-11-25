@@ -29,27 +29,20 @@ type HttpRoutes struct {
 	MapRoute                gin.HandlerFunc
 	MapProcessingStateRoute gin.HandlerFunc
 	TokenExchange           gin.HandlerFunc
+	LogoutRoute             gin.HandlerFunc
 	StaticFileServer        func(string) gin.HandlerFunc
 }
 
 func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
 	return &HttpRoutes{
 		TokenExchange:           getTokenExchangeRouteFunc(config, deps),
+		IndexRoute:              getIndexRoute("index.html", config, deps),
 		MapRoute:                getMapRoute("map.html", config, deps),
+		LogoutRoute:             getLogoutRoute(),
 		MapProcessingStateRoute: getMapProcessingStateRoute(config, deps),
-		IndexRoute: templateFileRoute("index.html", gin.H{
-			"title":            WebsiteName,
-			"strava_client_id": config.Strava.ClientID,
-		}),
 		StaticFileServer: func(urlPrefix string) gin.HandlerFunc {
 			return static.Serve(urlPrefix, static.LocalFile(config.StaticFileRoot, false))
 		},
-	}
-}
-
-func templateFileRoute(templateFileName string, params gin.H) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.HTML(http.StatusOK, templateFileName, params)
 	}
 }
 
@@ -122,6 +115,32 @@ func getMapRoute(templateFileName string, config *Config, deps *Dependencies) gi
 			"map_api_key":   config.Map.MapsAPIKey,
 			"tile_endpoint": fmt.Sprintf("https://%s.blob.core.windows.net/%s/", config.Storage.AccountName, config.Storage.UploadContainerName),
 		})
+	}
+}
+
+func getIndexRoute(templateFileName string, config *Config, deps *Dependencies) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, err := c.Cookie("token")
+		if err == nil && token != "" {
+			c.Redirect(301, "/map.html")
+			return
+		}
+
+		// helps with login/logout
+		c.Header("Cache-Control", "no-cache")
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"title":            WebsiteName,
+			"strava_client_id": config.Strava.ClientID,
+		})
+	}
+}
+
+func getLogoutRoute() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache")
+		c.SetCookie("token", "", -1, "", "", false, true)
+		c.Redirect(301, "/index.html")
+		return
 	}
 }
 

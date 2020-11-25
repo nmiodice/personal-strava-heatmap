@@ -40,6 +40,7 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/", routes.IndexRoute)
 	router.GET("/index.html", routes.IndexRoute)
 	router.GET("/map.html", routes.MapRoute)
+	router.GET("/logout", routes.LogoutRoute)
 	router.GET("/tokenexchange", routes.TokenExchange)
 	router.GET("/processingstate", routes.MapProcessingStateRoute)
 
