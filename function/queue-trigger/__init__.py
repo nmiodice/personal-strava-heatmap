@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import tempfile
+import traceback 
 from typing import List, Optional
 
 import azure.functions as func
@@ -96,6 +97,7 @@ def main(msg: func.QueueMessage):
     except Exception as e:
         logging.error('failed::queue-main')
         logging.error(e)
+        traceback.print_exc()
         set_message_state(args.db_config, message_id, 'FAILED')
         raise e
 

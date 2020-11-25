@@ -372,7 +372,8 @@ def parse_activity_coordinates(docs: List[JsonDict]) -> np.ndarray:
     for doc in docsWithCoords:
         for stream in doc:
             if 'type' in stream and stream['type'] == 'latlng':  # type: ignore
-                numpyCoords.append(stream['data'])    # type: ignore
+                if stream['data']:
+                    numpyCoords.append(stream['data'])    # type: ignore
 
     return np.array(numpyCoords, dtype=object)
 
