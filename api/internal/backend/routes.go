@@ -28,6 +28,7 @@ type HttpRoutes struct {
 	IndexRoute              gin.HandlerFunc
 	MapRoute                gin.HandlerFunc
 	MapProcessingStateRoute gin.HandlerFunc
+	ShareLinkRoute          gin.HandlerFunc
 	TokenExchange           gin.HandlerFunc
 	LogoutRoute             gin.HandlerFunc
 	StaticFileServer        func(string) gin.HandlerFunc
@@ -38,11 +39,34 @@ func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
 		TokenExchange:           getTokenExchangeRouteFunc(config, deps),
 		IndexRoute:              getIndexRoute("index.html", config, deps),
 		MapRoute:                getMapRoute("map.html", config, deps),
+		ShareLinkRoute:          getShareLinkRoute(config, deps),
 		LogoutRoute:             getLogoutRoute(),
 		MapProcessingStateRoute: getMapProcessingStateRoute(config, deps),
 		StaticFileServer: func(urlPrefix string) gin.HandlerFunc {
 			return static.Serve(urlPrefix, static.LocalFile(config.StaticFileRoot, false))
 		},
+	}
+}
+
+func getShareLinkRoute(config *Config, deps *Dependencies) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, err := c.Cookie("token")
+		if err != nil || token == "" {
+			c.Redirect(301, "/")
+			return
+		}
+
+		mapID, err := deps.Strava.Athlete.GetOrCreateMapID(c.Request.Context(), token)
+		if err != nil {
+			c.JSON(500, gin.H{
+				ResponseError: err.Error(),
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"url_path": "/map/" + mapID, // TODO: need to update a field that says this map is sharable
+		})
 	}
 }
 

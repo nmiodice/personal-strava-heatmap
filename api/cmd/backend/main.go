@@ -43,6 +43,7 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/logout", routes.LogoutRoute)
 	router.GET("/tokenexchange", routes.TokenExchange)
 	router.GET("/processingstate", routes.MapProcessingStateRoute)
+	router.GET("/share", routes.ShareLinkRoute)
 
 	router.Use(routes.StaticFileServer("/static"))
 
