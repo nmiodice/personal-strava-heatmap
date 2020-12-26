@@ -35,3 +35,16 @@ resource "azurerm_postgresql_database" "db" {
   charset             = "UTF8"
   collation           = "English_United States.1252"
 }
+
+data "http" "myip" {
+  url = "http://ipv4.icanhazip.com"
+}
+
+# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/postgresql_firewall_rule
+resource "azurerm_postgresql_firewall_rule" "local-dev" {
+  name                = "local-dev"
+  resource_group_name = azurerm_resource_group.rg.name
+  server_name         = azurerm_postgresql_server.dbserver.name
+  start_ip_address    = chomp(data.http.myip.body)
+  end_ip_address      = chomp(data.http.myip.body)
+}
