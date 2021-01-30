@@ -133,14 +133,15 @@
   <script src="https://maps.googleapis.com/maps/api/js?key={{ .map_api_key }}&callback=initMap&libraries=&v=weekly"
     defer></script>
 
-  <script src="static/map-style.js"></script>
-  <script src="static/athlete-status.js"></script>
-  <script src="static/map.js"></script>
+  <script src="/static/map-style.js"></script>
+  <script src="/static/athlete-status.js"></script>
+  <script src="/static/map.js"></script>
 </head>
 
 <body>
   <div>
     <input type="hidden" id="map_id" name="map_id" value="{{ .map_id }}">
+    <input type="hidden" id="sharable" name="sharable" value="{{ .sharable }}">
     <input type="hidden" id="tile_endpoint" name="tile_endpoint" value="{{ .tile_endpoint }}">
     <button class="svg" id="location_button">
       <img src="/static/icons/location.svg" height="10px">

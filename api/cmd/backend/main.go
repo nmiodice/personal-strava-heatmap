@@ -43,7 +43,10 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/logout", routes.LogoutRoute)
 	router.GET("/tokenexchange", routes.TokenExchange)
 	router.GET("/processingstate", routes.MapProcessingStateRoute)
-	router.GET("/share", routes.ShareLinkRoute)
+
+	sharedMapRoute := "/sharedmap"
+	router.GET("/share", routes.ShareMapLinkRoute(sharedMapRoute))
+	router.GET(sharedMapRoute+"/:mapid", routes.SharedMapRoute)
 
 	router.Use(routes.StaticFileServer("/static"))
 
@@ -81,6 +84,6 @@ func main() {
 		log.Fatalf("Error configuring application dependencies: %+v", err)
 	}
 
-	triggerBackgroundJobs(ctx, config, deps)
+	// triggerBackgroundJobs(ctx, config, deps)
 	runHTTPServerForever(config, deps)
 }

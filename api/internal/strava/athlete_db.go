@@ -130,6 +130,35 @@ func (ad athleteDB) GetOrCreateMapID(ctx context.Context, athleteID int) (string
 	return mapID, err
 }
 
+func (ad athleteDB) SetMapSharable(ctx context.Context, mapID string) error {
+	err := ad.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
+		row := tx.QueryRow(ctx, setMapSharableSQL, mapID)
+
+		if err := row.Scan(&mapID); err != nil {
+			return fmt.Errorf("setting map share status: %w", err)
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+func (ad athleteDB) GetMapSharable(ctx context.Context, mapID string) (bool, error) {
+	sharable := false
+	err := ad.db.InTx(ctx, pgx.Serializable, func(tx pgx.Tx) error {
+		row := tx.QueryRow(ctx, getMapSharableSQL, mapID)
+
+		if err := row.Scan(&sharable); err != nil {
+			return fmt.Errorf("fetching map share status: %w", err)
+		}
+
+		return nil
+	})
+
+	return sharable, err
+}
+
 // substitution is a series of escaped SQL values blocks
 var insertActivitiesSQL = `
 INSERT INTO
@@ -186,4 +215,24 @@ ON CONFLICT (athlete_id)
 	DO UPDATE SET athlete_id=EXCLUDED.athlete_id
 RETURNING
 	id
+`
+
+var setMapSharableSQL = `
+UPDATE
+	AthleteMap
+SET
+	sharable = true
+WHERE
+	id = $1
+RETURNING
+	id
+`
+
+var getMapSharableSQL = `
+SELECT
+	sharable
+FROM
+	AthleteMap
+WHERE
+	id = $1
 `

@@ -31,13 +31,20 @@ function initMap() {
   resetWindowParams()
   configureWindowMap()
   configureMapListeners()
-  configureLocationButtomListener()
-  configureShareButtomListener()
+  configureLocationButtonListener()
+  configureShareButtonVisibility()
+  configureShareButtonListener()
   applyMapOverlay()
   triggerGPSEnablement()
 }
 
-function configureShareButtomListener() {
+function configureShareButtonVisibility() {
+  if ($('#sharable').val().toLowerCase() == 'false') {
+    $('#share_button').hide()  
+  }
+}
+
+function configureShareButtonListener() {
   $('#share_button').click(function () {
     $.get("/share", function(response) {
       url = window.location.origin + response.url_path
@@ -92,7 +99,7 @@ function copyToClipboard(text) {
 }
 
 
-function configureLocationButtomListener() {
+function configureLocationButtonListener() {
   $('#location_button').click(function () {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(function ({ coords: { latitude: lat, longitude: lng } }) {
