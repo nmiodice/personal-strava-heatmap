@@ -79,7 +79,7 @@ func getShareMapLinkRoute(config *Config, deps *Dependencies) func(string) gin.H
 			}
 
 			c.JSON(200, gin.H{
-				"url_path": fmt.Sprintf("/%s/%s", strings.TrimLeft(sharedMapRoute, "/"), mapID), // TODO: need to update a field that says this map is sharable
+				"url_path": fmt.Sprintf("/%s/%s", strings.TrimLeft(sharedMapRoute, "/"), mapID),
 			})
 		}
 	}
