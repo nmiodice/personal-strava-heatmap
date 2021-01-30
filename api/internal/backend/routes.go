@@ -3,7 +3,9 @@ package backend
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -30,7 +32,10 @@ type HttpRoutes struct {
 	MapProcessingStateRoute gin.HandlerFunc
 	TokenExchange           gin.HandlerFunc
 	LogoutRoute             gin.HandlerFunc
-	StaticFileServer        func(string) gin.HandlerFunc
+	SharedMapRoute          gin.HandlerFunc
+
+	ShareMapLinkRoute func(string) gin.HandlerFunc
+	StaticFileServer  func(string) gin.HandlerFunc
 }
 
 func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
@@ -38,11 +43,45 @@ func GetRoutes(config *Config, deps *Dependencies) *HttpRoutes {
 		TokenExchange:           getTokenExchangeRouteFunc(config, deps),
 		IndexRoute:              getIndexRoute("index.html", config, deps),
 		MapRoute:                getMapRoute("map.html", config, deps),
+		ShareMapLinkRoute:       getShareMapLinkRoute(config, deps),
+		SharedMapRoute:          getSharedMapRoute("map.html", config, deps),
 		LogoutRoute:             getLogoutRoute(),
 		MapProcessingStateRoute: getMapProcessingStateRoute(config, deps),
 		StaticFileServer: func(urlPrefix string) gin.HandlerFunc {
 			return static.Serve(urlPrefix, static.LocalFile(config.StaticFileRoot, false))
 		},
+	}
+}
+
+func getShareMapLinkRoute(config *Config, deps *Dependencies) func(string) gin.HandlerFunc {
+	return func(sharedMapRoute string) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			token, err := c.Cookie("token")
+			if err != nil || token == "" {
+				c.Redirect(301, "/")
+				return
+			}
+
+			mapID, err := deps.Strava.Athlete.GetOrCreateMapID(c.Request.Context(), token)
+			if err != nil {
+				c.JSON(500, gin.H{
+					ResponseError: err.Error(),
+				})
+				return
+			}
+
+			err = deps.Strava.Athlete.SetMapSharable(c.Request.Context(), mapID)
+			if err != nil {
+				c.JSON(500, gin.H{
+					ResponseError: err.Error(),
+				})
+				return
+			}
+
+			c.JSON(200, gin.H{
+				"url_path": fmt.Sprintf("/%s/%s", strings.TrimLeft(sharedMapRoute, "/"), mapID),
+			})
+		}
 	}
 }
 
@@ -109,13 +148,55 @@ func getMapRoute(templateFileName string, config *Config, deps *Dependencies) gi
 			return
 		}
 
-		c.HTML(http.StatusOK, templateFileName, gin.H{
-			"title":         WebsiteName,
-			"map_id":        mapID,
-			"map_api_key":   config.Map.MapsAPIKey,
-			"tile_endpoint": fmt.Sprintf("https://%s.blob.core.windows.net/%s/", config.Storage.AccountName, config.Storage.UploadContainerName),
+		sendMapResponse(c, mapID, templateFileName, config, gin.H{})
+	}
+}
+
+func getSharedMapRoute(templateFileName string, config *Config, deps *Dependencies) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		mapID := c.Param("mapid")
+		if mapID == "" {
+			c.Redirect(301, "/")
+			return
+		}
+
+		isShared, err := deps.Strava.Athlete.GetMapSharable(c.Request.Context(), mapID)
+		if err != nil {
+			c.JSON(500, gin.H{
+				ResponseError: err.Error(),
+			})
+			return
+		}
+
+		if !isShared {
+			c.JSON(401, gin.H{
+				ResponseError: "This map has not been shared!",
+			})
+			return
+		}
+
+		sendMapResponse(c, mapID, templateFileName, config, gin.H{
+			"sharable": false,
 		})
 	}
+}
+
+func sendMapResponse(c *gin.Context, mapID, templateFileName string, config *Config, templateOverrides gin.H) {
+	mapParams := gin.H{
+		"title":         WebsiteName,
+		"map_id":        mapID,
+		"sharable":      true,
+		"map_api_key":   config.Map.MapsAPIKey,
+		"tile_endpoint": fmt.Sprintf("https://%s.blob.core.windows.net/%s/", config.Storage.AccountName, config.Storage.UploadContainerName),
+	}
+	for k, v := range templateOverrides {
+		if _, ok := templateOverrides[k]; ok {
+			mapParams[k] = v
+		} else {
+			log.Printf("Unexpectedly found new field `%s` as map template override... value will be dropped", k)
+		}
+	}
+	c.HTML(http.StatusOK, templateFileName, mapParams)
 }
 
 func getIndexRoute(templateFileName string, config *Config, deps *Dependencies) gin.HandlerFunc {

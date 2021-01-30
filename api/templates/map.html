@@ -17,22 +17,30 @@
       padding: 0;
     }
 
-    #location_button {
-      position: absolute;
-      right: 20px;
-      top: 20px;
-      z-index: 1;
-      height: 40px;
-      width: 40px;
-      border: none;
-    }
-
-    #location_button:hover {
+    .svg:hover {
       background-color: rgb(227, 227, 227);
       color: white;
       cursor: pointer;
     }
 
+    .svg {
+      position: absolute;
+      z-index: 1;
+      height: 40px;
+      width: 40px;
+      border: none;  
+    }
+
+    #location_button {
+      right: 20px;
+      top: 20px;
+    }
+
+
+    #share_button {
+      right: 80px;
+      top: 20px;
+    }
 
     #status {
       left: 20px;
@@ -40,12 +48,12 @@
     }
 
     #athlete-data {
-      right: 168px;
+      right: 228px;
       top: 20px;
     }
 
     #logout {
-      right: 80px;
+      right: 140px;
       top: 20px;
     }
 
@@ -74,6 +82,50 @@
       font-family: Arial, Helvetica, sans-serif;
     }
 
+    /* start snackbar */
+    #snackbar {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 2px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      transform: translate(-50%);
+      bottom: 30px;
+      font-size: 17px;
+    }
+
+    #snackbar.show {
+      visibility: visible;
+      -webkit-animation: fadein 0.5s, fadeout 0.5s 4.5s;
+      animation: fadein 0.5s, fadeout 0.5s 4.5s;
+    }
+
+    @-webkit-keyframes fadein {
+      from {bottom: 0; opacity: 0;} 
+      to {bottom: 30px; opacity: 1;}
+    }
+
+    @keyframes fadein {
+      from {bottom: 0; opacity: 0;}
+      to {bottom: 30px; opacity: 1;}
+    }
+
+    @-webkit-keyframes fadeout {
+      from {bottom: 30px; opacity: 1;} 
+      to {bottom: 0; opacity: 0;}
+    }
+
+    @keyframes fadeout {
+      from {bottom: 30px; opacity: 1;}
+      to {bottom: 0; opacity: 0;}
+    }
+    /* end snackbar */
+
   </style>
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"
     integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
@@ -81,18 +133,22 @@
   <script src="https://maps.googleapis.com/maps/api/js?key={{ .map_api_key }}&callback=initMap&libraries=&v=weekly"
     defer></script>
 
-  <script src="static/map-style.js"></script>
-  <script src="static/athlete-status.js"></script>
-  <script src="static/map.js"></script>
+  <script src="/static/map-style.js"></script>
+  <script src="/static/athlete-status.js"></script>
+  <script src="/static/map.js"></script>
 </head>
 
 <body>
-  <input type="hidden" id="map_id" name="map_id" value="{{ .map_id }}">
-  <input type="hidden" id="tile_endpoint" name="tile_endpoint" value="{{ .tile_endpoint }}">
-  <button id="location_button">
-    <img src="/static/icons/location.svg" height="10px">
-  </button>
   <div>
+    <input type="hidden" id="map_id" name="map_id" value="{{ .map_id }}">
+    <input type="hidden" id="sharable" name="sharable" value="{{ .sharable }}">
+    <input type="hidden" id="tile_endpoint" name="tile_endpoint" value="{{ .tile_endpoint }}">
+    <button class="svg" id="location_button">
+      <img src="/static/icons/location.svg" height="10px">
+    </button>
+    <button class="svg" id="share_button">
+      <img src="/static/icons/share.svg" height="10px">
+    </button>
     <div id="status" class="info-box">
       <img id="status_icon" width="16px" src="/static/icons/refresh_black_48dp.png"></img>
       <div id="status_text">Loading Map Status</div>      
@@ -101,8 +157,10 @@
       <div id="status_text">See your data on <a target="_blank" href="https://www.strava.com/athlete/training" style="color:#FC4C02;">Strava</a></div>
     </div>
     <div id="logout" class="info-box">
-      <div><a href="logout/" style="color:#FC4C02;">Logout</a></div>
+      <div><a href="/logout/" style="color:#FC4C02;">Logout</a></div>
     </div>
+
+    <div id="snackbar">Some text some message..</div>
   </div>
   <div id="map"></div>
 </body>

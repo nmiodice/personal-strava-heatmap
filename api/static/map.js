@@ -31,12 +31,75 @@ function initMap() {
   resetWindowParams()
   configureWindowMap()
   configureMapListeners()
-  configureButtomListener()
+  configureLocationButtonListener()
+  configureShareButtonVisibility()
+  configureShareButtonListener()
   applyMapOverlay()
   triggerGPSEnablement()
 }
 
-function configureButtomListener() {
+function configureShareButtonVisibility() {
+  if ($('#sharable').val().toLowerCase() == 'false') {
+    $('#share_button').hide()  
+  }
+}
+
+function configureShareButtonListener() {
+  $('#share_button').click(function () {
+    $.get("/share", function(response) {
+      url = window.location.origin + response.url_path
+      message = "Your map can be viewed by anyone with this link<br>" + toHref(url)
+      copied = copyToClipboard(url)
+      if (copied) {
+        message = message + "<br>This has been copied to your clipboard"
+      }
+      showToast(message)
+    })
+    .fail(function() {
+      showToast("Unable to get share link ¯\\_(ツ)_/¯")
+    })
+  })
+}
+
+function toHref(url) {
+  return "<a href=\"" + url + "\" style=\"color:#FC4C02;\" target=\"_blank\">" + url + "</a>"
+}
+
+function showToast(text) {
+  snackBar = $('#snackbar')
+  snackBar.empty()
+  snackBar.append(text)
+  snackBar.attr('class', 'show')
+  setTimeout(function(){ snackBar.attr('class', ''); }, 5000);
+}
+
+function copyToClipboard(text) {
+  var textArea = document.createElement("INPUT");
+  textArea.setAttribute("type", "text");
+
+  textArea.value = text;
+  
+  // Avoid scrolling to bottom
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.position = "fixed";
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, 99999); /* For mobile devices */
+
+  try {
+    return document.execCommand('copy'); /* success or fail */
+  } catch (err) {
+    return false
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+
+function configureLocationButtonListener() {
   $('#location_button').click(function () {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(function ({ coords: { latitude: lat, longitude: lng } }) {

@@ -58,13 +58,6 @@ resource "azurerm_role_assignment" "acr_pull" {
   principal_id         = azuread_service_principal.acr.id
 }
 
-# resource "azurerm_role_assignment" "acr_read" {
-#   scope                = var.acr_id
-#   role_definition_name = "Reader"
-#   principal_id         = azuread_service_principal.acr.id
-# }
-
-
 # https://www.terraform.io/docs/providers/azurerm/r/key_vault_secret.html
 resource "azurerm_key_vault_secret" "acr-pull-sp" {
   depends_on   = [azurerm_key_vault_access_policy.sp-manage]

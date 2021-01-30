@@ -136,3 +136,11 @@ func (as AthleteService) GetOrCreateMapID(ctx context.Context, token string) (st
 
 	return as.athleteDB.GetOrCreateMapID(ctx, athleteID)
 }
+
+func (as AthleteService) SetMapSharable(ctx context.Context, mapID string) error {
+	return as.athleteDB.SetMapSharable(ctx, mapID)
+}
+
+func (as AthleteService) GetMapSharable(ctx context.Context, mapID string) (bool, error) {
+	return as.athleteDB.GetMapSharable(ctx, mapID)
+}

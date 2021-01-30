@@ -44,6 +44,10 @@ func configureRouter(config *backend.Config, routes *backend.HttpRoutes) *gin.En
 	router.GET("/tokenexchange", routes.TokenExchange)
 	router.GET("/processingstate", routes.MapProcessingStateRoute)
 
+	sharedMapRoute := "/sharedmap"
+	router.GET("/share", routes.ShareMapLinkRoute(sharedMapRoute))
+	router.GET(sharedMapRoute+"/:mapid", routes.SharedMapRoute)
+
 	router.Use(routes.StaticFileServer("/static"))
 
 	return router
