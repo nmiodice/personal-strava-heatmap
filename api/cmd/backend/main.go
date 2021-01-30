@@ -84,6 +84,6 @@ func main() {
 		log.Fatalf("Error configuring application dependencies: %+v", err)
 	}
 
-	// triggerBackgroundJobs(ctx, config, deps)
+	triggerBackgroundJobs(ctx, config, deps)
 	runHTTPServerForever(config, deps)
 }
