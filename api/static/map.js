@@ -40,13 +40,13 @@ function initMap() {
 
 function configureShareButtonVisibility() {
   if ($('#sharable').val().toLowerCase() == 'false') {
-    $('#share_button').hide()  
+    $('#share_button').hide()
   }
 }
 
 function configureShareButtonListener() {
   $('#share_button').click(function () {
-    $.get("/share", function(response) {
+    $.get("/share", function (response) {
       url = window.location.origin + response.url_path
       message = "Your map can be viewed by anyone with this link<br>" + toHref(url)
       copied = copyToClipboard(url)
@@ -55,9 +55,9 @@ function configureShareButtonListener() {
       }
       showToast(message)
     })
-    .fail(function() {
-      showToast("Unable to get share link ¯\\_(ツ)_/¯")
-    })
+      .fail(function () {
+        showToast("Unable to get share link ¯\\_(ツ)_/¯")
+      })
   })
 }
 
@@ -70,7 +70,7 @@ function showToast(text) {
   snackBar.empty()
   snackBar.append(text)
   snackBar.attr('class', 'show')
-  setTimeout(function(){ snackBar.attr('class', ''); }, 5000);
+  setTimeout(function () { snackBar.attr('class', ''); }, 5000);
 }
 
 function copyToClipboard(text) {
@@ -78,7 +78,7 @@ function copyToClipboard(text) {
   textArea.setAttribute("type", "text");
 
   textArea.value = text;
-  
+
   // Avoid scrolling to bottom
   textArea.style.top = "0";
   textArea.style.left = "0";
@@ -122,14 +122,30 @@ function getQueryParam(paramName, defaultValue) {
   return defaultValue
 }
 
+// Default is all of US
+function setLocalStorageMapDefaults() {
+  if (!window.localStorage.getItem('lat')) {
+    window.localStorage.setItem('lat', getQueryParam('lat', 38.3200936))
+  }
+
+  if (!window.localStorage.getItem('lon')) {
+    window.localStorage.setItem('lon', getQueryParam('lon', -96.5407264))
+  }
+
+  if (!window.localStorage.getItem('z')) {
+    window.localStorage.setItem('z', getQueryParam('z', 5))
+  }
+}
+
 function configureWindowMap() {
+  setLocalStorageMapDefaults()
   window.map = new google.maps.Map(document.getElementById("map"), {
-    zoom: getQueryParam('z', 13),
+    zoom: parseFloat(window.localStorage.getItem('z')),
     maxZoom: 19,
     minZoom: 2,
-    center: { // Default is Austin, TX
-      lat: getQueryParam('lat', 30.2729),
-      lng: getQueryParam('lon', -97.7444)
+    center: {
+      lat: parseFloat(window.localStorage.getItem('lat')),
+      lng: parseFloat(window.localStorage.getItem('lon'))
     },
     mapTypeId: 'terrain',
     mapTypeControlOptions: [],
@@ -147,10 +163,19 @@ function configureWindowMap() {
 
 function configureMapListeners() {
   let positionListener = function () {
+    loc = {
+      'lat': window.map.getCenter().lat(),
+      'lon': window.map.getCenter().lng(),
+      'z': window.map.getZoom()
+    }
+
     newParams = new URLSearchParams(window.params)
-    newParams.set('lat', window.map.getCenter().lat())
-    newParams.set('lon', window.map.getCenter().lng())
-    newParams.set('z', window.map.getZoom())
+    Object.keys(loc).forEach(function (key) {
+      if (loc.hasOwnProperty(key)) {
+        window.localStorage.setItem(key, loc[key]);
+        newParams.set(key, loc[key])
+      }
+    });
 
     history.replaceState(null, null, "?" + newParams.toString());
     resetWindowParams()
