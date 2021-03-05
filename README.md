@@ -33,5 +33,5 @@ A variety of parallelism, caching and batching strategies are used to make this 
 
  * Only activities which you have deemed as `public` in your Strava profile will be used for this heatmap
  * Activity data is encrypted at rest
- * Only you can see your personalized heatmap unless you explicitly decide to share the map publicly
+ * Only you can see your personalized heatmap unless you explicitly decide to share the map publicly. Doing this means that anybody with your personal map link can view your data.
  * If you revoke permissions for this application, you will no longer be able to see your heatmap
