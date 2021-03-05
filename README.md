@@ -1,66 +1,37 @@
-# personal-strava-heatmap
+# Personal Strava Heatmap
 
+The Personal Strava Heatmap is an application that enables users to pull data from Strava to compute a version of the [Global Strava Heatmap](https://www.strava.com/heatmap) that is based on their activity data. This offers athletes an opportunity to all of their activity data projected onto a single interactive map.
 
-## Configure environment
+![Sample 1](./.images/sample-1.png)
+![Sample 2](./.images/sample-2.png)
 
-Many of the steps here assume that your shell environment is configured with the appropriate environment variables. You can find the required variables inside the relevant directory. Environment variables can be set using a tool like [direnv](https://direnv.net/), or by running the following:
+## Developer Docs
 
-```bash
-DOT_ENV=.env
-export $(cat $DOT_ENV | grep -v '^\s*#' | xargs)
-```
+Check out the [Developer Documentation](./DEV_DOCS.md) if you want to run this locally.
 
-## Initial Deployment
+## How it works
 
-### Setup Terraform Backend State
+Users who authenticate to Strava and authorize the application to pull their activity data (using [OAuth](https://developers.strava.com/docs/authentication/)) will be able to view their personal activity data rendered ontop of Google Maps, similar to the [Global Strava Heatmap](https://www.strava.com/heatmap).
 
-Terraform state should live in a remote container in order to be leveraged across a variety of machines (developer workstations, CI agents, etc...). The `terraform-bootstrap` module provisions and configures the state container:
+What makes this application unique is that it scales out for athletes who have mapped a lot of activities. The application will render an athletes heatmap for various [Google Maps Tiles](https://developers.google.com/maps/documentation/javascript/coordinates), which means that you can view detailed aggregate activity data in extremely fine-grained detail. A naive approach of plotting individual coordinates is slow, memory intensive, and will not scale for users with any substantial amount of activity data. 
 
-> **Note**: If you're authenticating using a Service Principal then it must have permissions to both `User.Read` and `Application.ReadWrite.OwnedBy` within the `Windows Azure Active Directory` API. This allows it to create AAD applications. It will also need the `owner` in the subscription being deployed to in order to do role assignments.
+## How it's built
 
-```bash
-cd terraform-bootstrap/
-terraform apply -auto-approve
+The application has two main components.
 
-# capture backend state configuration
-ARM_ACCESS_KEY=$(terraform output backend-state-account-key)
-ARM_ACCOUNT_NAME=$(terraform output backend-state-account-name)
-ARM_CONTAINER_NAME=$(terraform output backend-state-container-name)
+An API server, written in Golang, hosts various public APIs as well as javascript and HTML files that enable users to view their personalized heatmap and also check the status of any on-going map re-builds. The API server also periodically checks for new Strava activities for each user and will trigger an asynchronous map re-build whenever a new activity is found.
 
-# capture container registry ID
-ACR_ID=$(terraform output acr-id)
+An Azure Function, written in Python, is triggered when a user records a new activity. This component is responsible for crunching location data and producing the [Google Maps Tile](https://developers.google.com/maps/documentation/javascript/coordinates) images for all tiles in which the user has recorded an activity.
 
-cd ..
-```
+## Scaling
 
-### Deploy Infrastructure
+The scale challenge with this project lies in the map generation. Due to the nature of [Google Maps Tiles](https://developers.google.com/maps/documentation/javascript/coordinates), there are billions of possible tiles for which a piece of the map must be drawn. A typical user will have activity data in over 10,000 of these tiles, which means that for each new activity that athlete completes there will need to be about 10,000 images produced.
 
-Now that the remote state container is configured it is possible to deploy the infrastructure:
+A variety of parallelism, caching and batching strategies are used to make this process fast and cheap. The API server will determine the relevant tile-set for a user and emit batches of 250 tiles using an Azure Storage Queue. The Azure Function is responsible for picking these messages off the queue and rendering each tile in the batch. At any given time, the system can auto-scale to process roughly 50 batches of 250 tiles at the same time. When the system is idle, there is no resource usage allocated towards generating tiles because Azure functions will scale down to zero instances.
 
-> **Note**: instructions for setting `ARM_ACCESS_KEY`, `ARM_ACCOUNT_NAME`, `ARM_CONTAINER_NAME` are described above.
+## A few notes on privacy
 
-```bash
-cd terraform
-terraform plan
-terraform apply
-cd ..
-```
-
-### Build & Deploy Image Processor (Azure Function)
-
-The image processing component is responsible for converting ingested ride data into map tiles. This is modeled as an Azure Function because it needs to handle large compute batches that happen in large bursts. Azure Functions scale up to meet this demaind, and scale down when they are not needed.
-
-```bash
-./scripts/build_function.sh
-./scripts/deploy_function.sh
-```
-
-### Build & Deploy API server
-
-The API server handles most user interaction and can also kick off map computation workloads.
-
-```bash
-./scripts/build_service.sh
-
-# Deploy is TBD
-```
+ * Only activities which you have deemed as `public` in your Strava profile will be used for this heatmap
+ * Activity data is encrypted at rest
+ * Only you can see your personalized heatmap unless you explicitly decide to share the map publicly. Doing this means that anybody with your personal map link can view your data.
+ * If you revoke permissions for this application, you will no longer be able to see your heatmap
