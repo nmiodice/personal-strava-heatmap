@@ -2,13 +2,13 @@ import json
 import logging
 import os
 import tempfile
-import traceback 
+import traceback
 from typing import List, Optional
 
 import azure.functions as func
 
 from .main import (Args, BoundingBox, DBConfig, ProcessingParam, StorageConfig,
-                   Tile, run, get_db_conn)
+                   Tile, get_db_conn, run)
 
 
 def get_params_from_message(message: dict) -> List[ProcessingParam]:

@@ -3,4 +3,4 @@
 set -euo pipefail
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-(cd "$DIR/../function" && func start)
+(cd "$DIR/../function" && func start --python)

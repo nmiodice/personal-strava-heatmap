@@ -6,6 +6,7 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
 # Create app directory
 WORKDIR /home/site/wwwroot
 
+RUN apt-get update
 RUN apt install -y libpq-dev python3-dev
 RUN python -m pip install --upgrade pip
 

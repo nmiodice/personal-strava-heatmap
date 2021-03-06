@@ -351,7 +351,8 @@ def process_coordinate_summary(
         x_min = max(point[0] - 1, 0)
         x_max = min(point[0] + 1, tile_size_px)
 
-        imageMap[y_min:y_max, x_min:x_max] = [252, 76, 2, 255] # #FC4C02, aka "strava orange"
+        imageMap[y_min:y_max, x_min:x_max] = [
+            252, 76, 2, 255]  # FC4C02, aka "strava orange"
 
     blurredImageMap = gaussian_filter(imageMap, sigma=(.8, .8, .8))
     maxPxVal = np.max(blurredImageMap)
@@ -372,8 +373,8 @@ def parse_activity_coordinates(docs: List[JsonDict]) -> np.ndarray:
     for doc in docsWithCoords:
         for stream in doc:
             if 'type' in stream and stream['type'] == 'latlng':  # type: ignore
-                if stream['data']:
-                    numpyCoords.append(stream['data'])    # type: ignore
+                if stream['data']:                               # type: ignore
+                    numpyCoords.append(stream['data'])           # type: ignore
 
     return np.array(numpyCoords, dtype=object)
 
