@@ -29,7 +29,7 @@ resource "azurerm_key_vault_access_policy" "api-get" {
 
 # https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/resources/application
 resource "azuread_application" "acr" {
-  name = format("acr-pull-%s", random_string.rand.result)
+  display_name = format("acr-pull-%s", random_string.rand.result)
 }
 
 # https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/resources/service_principal
