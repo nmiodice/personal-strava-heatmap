@@ -4,7 +4,8 @@ output "backend-state-account-name" {
 }
 
 output "backend-state-account-key" {
-  value = azurerm_storage_account.ci.primary_access_key
+  value     = azurerm_storage_account.ci.primary_access_key
+  sensitive = true
 }
 
 output "backend-state-container-name" {
